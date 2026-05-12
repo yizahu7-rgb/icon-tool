@@ -572,55 +572,45 @@ STRICT SVG MATH AND ALIGNMENT RULES:
       msgTimer2 = window.setTimeout(() => setLoadingMsg('矢量代码生成中，可能还需要十几秒...'), 15000);
 
       let generatedSvgPaths: string | null = null;
-      let delay = 1000;
 
-      for (let i = 0; i < 2; i += 1) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = window.setTimeout(() => controller.abort(), 60000);
+      try {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 60000);
 
-          const res = await fetch('/api/generate-icon', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt,
-              image:
-                uploadedImageBase64 && uploadedImageMimeType
-                  ? { mimeType: uploadedImageMimeType, data: uploadedImageBase64 }
-                  : null
-            }),
-            signal: controller.signal
-          });
+        const res = await fetch('/api/generate-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            image:
+              uploadedImageBase64 && uploadedImageMimeType
+                ? { mimeType: uploadedImageMimeType, data: uploadedImageBase64 }
+                : null
+          }),
+          signal: controller.signal
+        });
 
-          window.clearTimeout(timeoutId);
+        window.clearTimeout(timeoutId);
 
-          if (!res.ok) {
-            const errorPayload = await res.json().catch(() => null);
-            const detail = errorPayload?.detail || errorPayload?.error || `API Error ${res.status}`;
-            throw new Error(detail);
-          }
-          const data = await res.json();
-          if (typeof data.text === 'string') {
-            generatedSvgPaths = sanitizeSvgFragment(data.text);
-            break;
-          }
-          break;
-        } catch (error: any) {
-          if (i === 1) {
-            console.error('AI Generation failed after 2 tries', error);
-            const message =
-              error.name === 'AbortError'
-                ? '请求超时，请稍后重试'
-                : error.message
-                  ? `AI 失败：${String(error.message).slice(0, 70)}`
-                  : 'AI 节点拥挤或超时，请稍后重试';
-            showToast(message);
-            return;
-          }
-
-          await new Promise((resolve) => window.setTimeout(resolve, delay));
-          delay *= 2;
+        if (!res.ok) {
+          const errorPayload = await res.json().catch(() => null);
+          const detail = errorPayload?.detail || errorPayload?.error || `API Error ${res.status}`;
+          throw new Error(detail);
         }
+        const data = await res.json();
+        if (typeof data.text === 'string') {
+          generatedSvgPaths = sanitizeSvgFragment(data.text);
+        }
+      } catch (error: any) {
+        console.error('AI Generation failed', error);
+        const message =
+          error.name === 'AbortError'
+            ? '请求超时，请稍后重试'
+            : error.message
+              ? `AI 失败：${String(error.message).slice(0, 140)}`
+              : 'AI 节点拥挤或超时，请稍后重试';
+        showToast(message);
+        return;
       }
 
       if (!generatedSvgPaths) {
