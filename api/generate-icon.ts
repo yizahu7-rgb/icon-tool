@@ -10,6 +10,14 @@ type RequestBody = {
   } | null;
 };
 
+type GeminiError = {
+  status: number;
+  detail: string;
+  model: string;
+};
+
+const MODELS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-flash-lite'];
+
 const parseBody = (body: unknown): RequestBody => {
   if (!body) return {};
   if (typeof body === 'string') {
@@ -22,6 +30,23 @@ const parseBody = (body: unknown): RequestBody => {
   return body as RequestBody;
 };
 
+const parseGeminiError = async (response: Response) => {
+  const detail = await response.text();
+  try {
+    const parsed = JSON.parse(detail);
+    return parsed.error?.message || detail;
+  } catch {
+    return detail;
+  }
+};
+
+const shouldTryFallback = (error: GeminiError) => {
+  return (
+    [404, 429, 503].includes(error.status) ||
+    /quota|rate|exceeded|resource_exhausted|overloaded|unavailable/i.test(error.detail)
+  );
+};
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -29,7 +54,6 @@ export default async function handler(req: any, res: any) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const model = 'gemini-3-flash-preview';
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Missing GEMINI_API_KEY environment variable' });
@@ -53,41 +77,57 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts }],
-        generationConfig: { temperature: 0.1 }
-      })
-    }
-  );
+  const attemptedModels: string[] = [];
+  let lastError: GeminiError | null = null;
 
-  if (!geminiRes.ok) {
-    const detail = await geminiRes.text();
-    let message = detail;
-    try {
-      const parsed = JSON.parse(detail);
-      message = parsed.error?.message || detail;
-    } catch {
-      // Keep the raw response text when Gemini does not return JSON.
+  for (const model of MODELS) {
+    attemptedModels.push(model);
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts }],
+          generationConfig: { temperature: 0.1 }
+        })
+      }
+    );
+
+    if (!geminiRes.ok) {
+      lastError = {
+        status: geminiRes.status,
+        detail: await parseGeminiError(geminiRes),
+        model
+      };
+
+      if (shouldTryFallback(lastError)) {
+        continue;
+      }
+      break;
     }
 
-    return res.status(geminiRes.status).json({
-      error: `Gemini API error ${geminiRes.status}`,
-      detail: message,
-      model
-    });
+    const data = await geminiRes.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      lastError = {
+        status: 502,
+        detail: 'Gemini returned no SVG text',
+        model
+      };
+      continue;
+    }
+
+    return res.status(200).json({ text, model, attemptedModels });
   }
 
-  const data = await geminiRes.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const status = lastError?.status || 502;
 
-  if (!text) {
-    return res.status(502).json({ error: 'Gemini returned no SVG text' });
-  }
-
-  return res.status(200).json({ text });
+  return res.status(status).json({
+    error: `Gemini API error ${status}`,
+    detail: lastError?.detail || 'Gemini request failed',
+    model: lastError?.model,
+    attemptedModels
+  });
 }
