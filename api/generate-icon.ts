@@ -67,9 +67,18 @@ export default async function handler(req: any, res: any) {
 
   if (!geminiRes.ok) {
     const detail = await geminiRes.text();
+    let message = detail;
+    try {
+      const parsed = JSON.parse(detail);
+      message = parsed.error?.message || detail;
+    } catch {
+      // Keep the raw response text when Gemini does not return JSON.
+    }
+
     return res.status(geminiRes.status).json({
       error: `Gemini API error ${geminiRes.status}`,
-      detail
+      detail: message,
+      model
     });
   }
 

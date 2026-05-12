@@ -594,7 +594,11 @@ STRICT SVG MATH AND ALIGNMENT RULES:
 
           window.clearTimeout(timeoutId);
 
-          if (!res.ok) throw new Error(`API Error ${res.status}`);
+          if (!res.ok) {
+            const errorPayload = await res.json().catch(() => null);
+            const detail = errorPayload?.detail || errorPayload?.error || `API Error ${res.status}`;
+            throw new Error(detail);
+          }
           const data = await res.json();
           if (typeof data.text === 'string') {
             generatedSvgPaths = sanitizeSvgFragment(data.text);
@@ -604,7 +608,13 @@ STRICT SVG MATH AND ALIGNMENT RULES:
         } catch (error: any) {
           if (i === 1) {
             console.error('AI Generation failed after 2 tries', error);
-            showToast(error.name === 'AbortError' ? '请求超时，请稍后重试' : 'AI 节点拥挤或超时，请稍后重试');
+            const message =
+              error.name === 'AbortError'
+                ? '请求超时，请稍后重试'
+                : error.message
+                  ? `AI 失败：${String(error.message).slice(0, 70)}`
+                  : 'AI 节点拥挤或超时，请稍后重试';
+            showToast(message);
             return;
           }
 
