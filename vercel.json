@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/generate-icon.ts": {
+      "maxDuration": 60
+    }
+  }
+}
