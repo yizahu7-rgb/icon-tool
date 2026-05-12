@@ -29,7 +29,7 @@ export default async function handler(req: any, res: any) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const model = 'gemini-3-pro-preview';
+  const model = 'gemini-3.1-pro-preview';
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Missing GEMINI_API_KEY environment variable' });
