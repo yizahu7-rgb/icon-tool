@@ -5,6 +5,11 @@ export default async function handler(req: any, res: any) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
+  const debugToken = process.env.GEMINI_MODELS_DEBUG_TOKEN;
+
+  if (!debugToken || req.headers.authorization !== `Bearer ${debugToken}`) {
+    return res.status(404).json({ error: 'Not found' });
+  }
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Missing GEMINI_API_KEY environment variable' });

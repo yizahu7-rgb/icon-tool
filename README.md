@@ -1,11 +1,27 @@
-# LucideUI Icon库
+# FS后台设计 Icon库
+
+## 项目文档
+
+新任务或新开发者从 `PROJECT_CONTEXT.md` 开始。图标工作依次读取：
+
+1. `PROJECT_CONTEXT.md`：架构、运行、数据边界与续接流程
+2. `ICON_REDRAW_STANDARD.md`：完整绘制和验收规范
+3. `ICON_REDRAW_PROGRESS.md`：唯一当前批次与确认状态
+4. `HANDOFF.md`：历史决策和环境背景
+5. `AGENTS.md`：编码代理约束
+
+项目知识以这些 Markdown 为准，不要求回顾旧聊天。
 
 这是一个可部署到 Vercel 的 React 图标工具：
 
 - 前端：Vite + React + Tailwind CSS
-- 图标：lucide-react
+- 基础图标：Iconfont 合集 `54209` 与 `26815` 的来源绑定、人工重绘中心线路径
+- 页面功能图标：`lucide-react`
+- 图标网格：人工重绘使用 32×32 正式画板；AI 生成使用等比映射的 24×24 可编辑画板
 - 云端同步：Firebase Anonymous Auth + Firestore
 - AI 生成：Vercel Serverless Function 代理 Gemini API
+
+当前已支持图标搜索与分类、全局尺寸/描边/圆角调整、参考图辅助 AI 生成、MasterGo 可编辑 SVG 复制、Iconfont 闭合轮廓导出、JSX/SVG/PNG 输出、图标重命名与删除。完整功能、数据边界和当前停点统一查看 `PROJECT_CONTEXT.md`。
 
 ## 本地运行
 
@@ -52,10 +68,19 @@ Gemini key 只放在 Vercel 的服务端环境变量里：
 
 ```env
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODELS=
 ```
 
 不要给 Gemini key 加 `VITE_` 前缀，否则会暴露到浏览器代码里。
+
+`GEMINI_MODELS` 可选，使用英文逗号分隔模型名；留空时依次尝试
+`gemini-3.1-flash-lite-preview`、`gemini-3-flash-preview`、`gemini-3.1-flash-lite`。
+界面会记录每个 AI 图标实际使用的模型。
+
+新生成图标遵守 `FS-LINE-2026.09`：仅一个 `<path>`、绝对坐标、`fill="none"`、无额外样式属性，并严格限制在 24×24 画板内。完整规则见 `ICON_REDRAW_STANDARD.md`，代码单一来源为 `src/icon-generation-standard.ts`。
+
+临时模型诊断接口 `/api/models` 默认关闭。如需启用，在服务端设置
+`GEMINI_MODELS_DEBUG_TOKEN`，并通过 `Authorization: Bearer <token>` 请求。不要把该令牌提交到仓库。
 
 ## 部署到 Vercel
 
@@ -81,3 +106,5 @@ GEMINI_MODEL=gemini-2.5-flash
 ## 数据说明
 
 当前版本使用匿名登录，每位同事会有自己的图标库状态。如果要让所有人共享同一套自定义图标，需要把 Firestore 路径改成团队共享集合，并重新设置安全规则。
+
+图标名称和删除记录会保存到当前匿名用户数据；名称及删除记录另有本地备份。拖动图标调整分类只在本机开发地址启用，分类覆盖只写入当前浏览器的 localStorage，不会同步给线上其他用户。

@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1250" viewBox="0 0 1080 1250">
+  <rect width="100%" height="100%" fill="#eef2f7"/>
+  <style>text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}</style>
+  
+  <g transform="translate(0 0)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">皇冠</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M526.08 102.4a25.6 25.6 0 0 1 8.512 8.128l196.864 303.488 183.168-127.808a25.6 25.6 0 0 1 40.128 23.424l-56.512 592.32a25.6 25.6 0 0 1-25.536 23.168H151.296a25.6 25.6 0 0 1-25.536-23.168L69.248 309.76a25.6 25.6 0 0 1 40.128-23.424l198.144 138.368 183.488-313.088A25.6 25.6 0 0 1 526.08 102.4z m-10.432 135.36L380.992 467.712 334.4 547.2l-75.584-52.8-92.608-64.64 39.168 410.24h613.184l39.168-410.432-77.568 54.208-72.192 50.368-47.936-73.856-144.384-222.592z m128.768 456.448v85.12H379.584v-85.12h264.832z" fill="#64748b" p-id="2354"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 7 L7 12 L12 4 L17 12 L21 7 L19 19 H5 Z M5 16 H19" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M526.08 102.4a25.6 25.6 0 0 1 8.512 8.128l196.864 303.488 183.168-127.808a25.6 25.6 0 0 1 40.128 23.424l-56.512 592.32a25.6 25.6 0 0 1-25.536 23.168H151.296a25.6 25.6 0 0 1-25.536-23.168L69.248 309.76a25.6 25.6 0 0 1 40.128-23.424l198.144 138.368 183.488-313.088A25.6 25.6 0 0 1 526.08 102.4z m-10.432 135.36L380.992 467.712 334.4 547.2l-75.584-52.8-92.608-64.64 39.168 410.24h613.184l39.168-410.432-77.568 54.208-72.192 50.368-47.936-73.856-144.384-222.592z m128.768 456.448v85.12H379.584v-85.12h264.832z" fill="#64748b" p-id="2354"></path></g><path d="M3 7 L7 12 L12 4 L17 12 L21 7 L19 19 H5 Z M5 16 H19" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(540 0)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">护照</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M853.312 42.688c23.616 0 42.688 19.072 42.688 42.624v853.376a42.688 42.688 0 0 1-42.688 42.624H170.688A42.688 42.688 0 0 1 128 938.688V85.312c0-23.552 19.072-42.624 42.688-42.624h682.624zM810.688 128H213.312v768h597.376V128zM512 640.64c59.008 0 117.76 11.712 175.872 35.008l39.488 15.872-31.68 78.976-39.552-15.808A384.32 384.32 0 0 0 512 725.696c-48 0-95.936 9.6-144.128 28.992l-39.552 15.808-31.68-78.976 39.488-15.872A469.312 469.312 0 0 1 512 640.64z m0-404.864c67.072 0 121.472 54.4 121.472 121.472v99.328a121.472 121.472 0 0 1-242.944 0V357.248c0-67.072 54.4-121.472 121.472-121.472z m0 85.12a36.352 36.352 0 0 0-36.352 36.352v99.328a36.352 36.352 0 0 0 72.704 0V357.248A36.352 36.352 0 0 0 512 320.896z" fill="#64748b" p-id="2365"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M4 3 H20 V21 H4 Z M12 7 A4 4 0 1 1 12 15 A4 4 0 1 1 12 7 Z M8 11 H16 M12 7 C10 9 10 13 12 15 M12 7 C14 9 14 13 12 15" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M853.312 42.688c23.616 0 42.688 19.072 42.688 42.624v853.376a42.688 42.688 0 0 1-42.688 42.624H170.688A42.688 42.688 0 0 1 128 938.688V85.312c0-23.552 19.072-42.624 42.688-42.624h682.624zM810.688 128H213.312v768h597.376V128zM512 640.64c59.008 0 117.76 11.712 175.872 35.008l39.488 15.872-31.68 78.976-39.552-15.808A384.32 384.32 0 0 0 512 725.696c-48 0-95.936 9.6-144.128 28.992l-39.552 15.808-31.68-78.976 39.488-15.872A469.312 469.312 0 0 1 512 640.64z m0-404.864c67.072 0 121.472 54.4 121.472 121.472v99.328a121.472 121.472 0 0 1-242.944 0V357.248c0-67.072 54.4-121.472 121.472-121.472z m0 85.12a36.352 36.352 0 0 0-36.352 36.352v99.328a36.352 36.352 0 0 0 72.704 0V357.248A36.352 36.352 0 0 0 512 320.896z" fill="#64748b" p-id="2365"></path></g><path d="M4 3 H20 V21 H4 Z M12 7 A4 4 0 1 1 12 15 A4 4 0 1 1 12 7 Z M8 11 H16 M12 7 C10 9 10 13 12 15 M12 7 C14 9 14 13 12 15" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(0 250)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">邮件</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M896 170.688c23.552 0 42.688 19.072 42.688 42.624v597.376a42.688 42.688 0 0 1-42.688 42.624H128a42.688 42.688 0 0 1-42.688-42.624V213.312c0-23.552 19.136-42.624 42.688-42.624h768z m-42.688 185.216L546.88 528c-22.592 10.304-47.36 10.304-69.76 0L170.624 355.84V768h682.688V355.84z m0-99.904H170.688v2.24L512 448.896l341.312-190.72V256z" fill="#64748b" p-id="2376"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 5 H21 V19 H3 Z M3 6 L12 13 L21 6" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M896 170.688c23.552 0 42.688 19.072 42.688 42.624v597.376a42.688 42.688 0 0 1-42.688 42.624H128a42.688 42.688 0 0 1-42.688-42.624V213.312c0-23.552 19.136-42.624 42.688-42.624h768z m-42.688 185.216L546.88 528c-22.592 10.304-47.36 10.304-69.76 0L170.624 355.84V768h682.688V355.84z m0-99.904H170.688v2.24L512 448.896l341.312-190.72V256z" fill="#64748b" p-id="2376"></path></g><path d="M3 5 H21 V19 H3 Z M3 6 L12 13 L21 6" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(540 250)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">用户</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M511.872 729.6c156.224 0 292.864 67.2 367.232 167.424l-78.592 37.184c-60.544-71.68-167.168-119.296-288.64-119.296-121.536 0-228.16 47.616-288.64 119.296l-78.592-37.184C218.944 796.8 355.584 729.6 511.872 729.6z m0-640a213.312 213.312 0 0 1 213.312 213.312v128a213.312 213.312 0 0 1-204.096 213.12l-9.216 0.256a213.312 213.312 0 0 1-213.376-213.376v-128a213.312 213.312 0 0 1 204.096-213.12l9.28-0.192z m0 85.312A128 128 0 0 0 384 295.424l-0.192 7.488v128a128 128 0 0 0 255.744 7.552l0.256-7.552v-128a128 128 0 0 0-128-128z" fill="#64748b" p-id="2387"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M12 11 A4 4 0 1 1 12 3 A4 4 0 1 1 12 11 Z M4 21 C4.5 16.5 7.5 14 12 14 C16.5 14 19.5 16.5 20 21" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M511.872 729.6c156.224 0 292.864 67.2 367.232 167.424l-78.592 37.184c-60.544-71.68-167.168-119.296-288.64-119.296-121.536 0-228.16 47.616-288.64 119.296l-78.592-37.184C218.944 796.8 355.584 729.6 511.872 729.6z m0-640a213.312 213.312 0 0 1 213.312 213.312v128a213.312 213.312 0 0 1-204.096 213.12l-9.216 0.256a213.312 213.312 0 0 1-213.376-213.376v-128a213.312 213.312 0 0 1 204.096-213.12l9.28-0.192z m0 85.312A128 128 0 0 0 384 295.424l-0.192 7.488v128a128 128 0 0 0 255.744 7.552l0.256-7.552v-128a128 128 0 0 0-128-128z" fill="#64748b" p-id="2387"></path></g><path d="M12 11 A4 4 0 1 1 12 3 A4 4 0 1 1 12 11 Z M4 21 C4.5 16.5 7.5 14 12 14 C16.5 14 19.5 16.5 20 21" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(0 500)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">VIP</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M748.608 96a38.4 38.4 0 0 1 30.912 15.616l194.112 263.424a38.4 38.4 0 0 1-2.112 48.192L540.8 911.36a38.4 38.4 0 0 1-57.6 0L52.48 423.232a38.4 38.4 0 0 1-2.112-48.192L244.48 111.616a38.4 38.4 0 0 1 30.912-15.616h473.216z m-23.616 85.12H298.944L141.248 395.2 512 815.36l370.688-420.16-157.696-214.08zM627.456 429.44l61.888 58.624L531.2 667.328a25.6 25.6 0 0 1-38.4 0l-156.48-177.28 61.184-59.2L512 560.448 627.456 429.44z" fill="#64748b" p-id="2398"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 8 L7 3 H17 L21 8 L12 21 Z M3 8 H21 M7 3 L9 8 L12 21 M17 3 L15 8 L12 21" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M748.608 96a38.4 38.4 0 0 1 30.912 15.616l194.112 263.424a38.4 38.4 0 0 1-2.112 48.192L540.8 911.36a38.4 38.4 0 0 1-57.6 0L52.48 423.232a38.4 38.4 0 0 1-2.112-48.192L244.48 111.616a38.4 38.4 0 0 1 30.912-15.616h473.216z m-23.616 85.12H298.944L141.248 395.2 512 815.36l370.688-420.16-157.696-214.08zM627.456 429.44l61.888 58.624L531.2 667.328a25.6 25.6 0 0 1-38.4 0l-156.48-177.28 61.184-59.2L512 560.448 627.456 429.44z" fill="#64748b" p-id="2398"></path></g><path d="M3 8 L7 3 H17 L21 8 L12 21 Z M3 8 H21 M7 3 L9 8 L12 21 M17 3 L15 8 L12 21" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(540 500)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">聊天记录</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M896 106.688c23.552 0 42.688 19.072 42.688 42.624v384h-85.376V192H170.688v571.072L245.888 704h351.424v85.312h-321.92l-190.08 149.376V149.312c0-23.552 19.136-42.624 42.688-42.624h768z m-84.928 510.464l-0.064 153.152 108.16 108.096-60.416 60.352-120.512-120.576a42.688 42.688 0 0 1-12.544-30.208v-170.88l85.376 0.064zM384 384a64 64 0 1 1 0 128 64 64 0 0 1 0-128z m256 0a64 64 0 1 1 0 128 64 64 0 0 1 0-128z" fill="#64748b" p-id="2409"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 4 H17 V15 H8 L4 18 V15 H3 Z M8 18 H16 L20 21 V18 H21 V8 H18" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M896 106.688c23.552 0 42.688 19.072 42.688 42.624v384h-85.376V192H170.688v571.072L245.888 704h351.424v85.312h-321.92l-190.08 149.376V149.312c0-23.552 19.136-42.624 42.688-42.624h768z m-84.928 510.464l-0.064 153.152 108.16 108.096-60.416 60.352-120.512-120.576a42.688 42.688 0 0 1-12.544-30.208v-170.88l85.376 0.064zM384 384a64 64 0 1 1 0 128 64 64 0 0 1 0-128z m256 0a64 64 0 1 1 0 128 64 64 0 0 1 0-128z" fill="#64748b" p-id="2409"></path></g><path d="M3 4 H17 V15 H8 L4 18 V15 H3 Z M8 18 H16 L20 21 V18 H21 V8 H18" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(0 750)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">邮件-下载</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M852.032 569.728v179.584l59.136-54.912 60.288 60.352L832 890.624a32 32 0 0 1-44.928-0.32l-135.424-135.552 60.352-60.352 54.72 54.976V569.728h85.312zM896 170.688c23.552 0 42.688 19.072 42.688 42.624V512h-85.376V355.84L546.88 528c-22.592 10.368-47.36 10.368-69.76 0L170.624 355.84V768h416.064v85.312H128a42.688 42.688 0 0 1-42.688-42.624V213.312c0-23.552 19.136-42.624 42.688-42.624h768zM853.312 256H170.688v2.24L512 448.896l341.312-190.72V256z" fill="#64748b" p-id="2420"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 5 H21 V16 H3 Z M3 6 L12 13 L21 6 M16 18 V22 M13.5 19.5 L16 22 L18.5 19.5" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M852.032 569.728v179.584l59.136-54.912 60.288 60.352L832 890.624a32 32 0 0 1-44.928-0.32l-135.424-135.552 60.352-60.352 54.72 54.976V569.728h85.312zM896 170.688c23.552 0 42.688 19.072 42.688 42.624V512h-85.376V355.84L546.88 528c-22.592 10.368-47.36 10.368-69.76 0L170.624 355.84V768h416.064v85.312H128a42.688 42.688 0 0 1-42.688-42.624V213.312c0-23.552 19.136-42.624 42.688-42.624h768zM853.312 256H170.688v2.24L512 448.896l341.312-190.72V256z" fill="#64748b" p-id="2420"></path></g><path d="M3 5 H21 V16 H3 Z M3 6 L12 13 L21 6 M16 18 V22 M13.5 19.5 L16 22 L18.5 19.5" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(540 750)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">邮件-已读</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M523.008 90.24l405.376 244.864c6.4 3.84 10.24 10.816 10.24 18.24V896a42.688 42.688 0 0 1-42.624 42.688H128A42.688 42.688 0 0 1 85.312 896V353.344c0-7.424 3.904-14.4 10.304-18.24l405.376-244.8a21.312 21.312 0 0 1 22.016 0z m330.304 397.312l-306.432 172.16c-22.592 10.368-47.36 10.368-69.76 0l-306.496-172.16v365.76h682.688V487.552zM512 183.296L170.688 389.44v0.448L512 580.608l341.312-190.784L512 183.296z" fill="#64748b" p-id="2431"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 7 L12 3 L21 7 V19 H3 Z M3 7 L12 14 L21 7 M15 18 L17 20 L21 16" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M523.008 90.24l405.376 244.864c6.4 3.84 10.24 10.816 10.24 18.24V896a42.688 42.688 0 0 1-42.624 42.688H128A42.688 42.688 0 0 1 85.312 896V353.344c0-7.424 3.904-14.4 10.304-18.24l405.376-244.8a21.312 21.312 0 0 1 22.016 0z m330.304 397.312l-306.432 172.16c-22.592 10.368-47.36 10.368-69.76 0l-306.496-172.16v365.76h682.688V487.552zM512 183.296L170.688 389.44v0.448L512 580.608l341.312-190.784L512 183.296z" fill="#64748b" p-id="2431"></path></g><path d="M3 7 L12 3 L21 7 V19 H3 Z M3 7 L12 14 L21 7 M15 18 L17 20 L21 16" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(0 1000)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">消息-已发送</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M894.72 106.688c23.488 0 42.624 19.072 42.624 42.624v441.28l1.024 155.776a42.688 42.688 0 0 1-42.368 42.944H275.072l-189.76 149.376V149.312c0-23.552 19.136-42.624 42.688-42.624h766.72zM851.904 192H170.688v570.88l51.648-40.576 23.232-18.304h607.168l-0.704-113.408L851.968 192z m-172.8 87.04l60.8 56.832-229.504 245.056a54.4 54.4 0 0 1-76.928 0.256l-140.8-139.904 58.624-59.072 119.68 118.976 208.192-222.144z" fill="#64748b" p-id="2442"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M3 4 H17 V15 H8 L4 18 V15 H3 Z M14 19 L17 22 L22 16" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M894.72 106.688c23.488 0 42.624 19.072 42.624 42.624v441.28l1.024 155.776a42.688 42.688 0 0 1-42.368 42.944H275.072l-189.76 149.376V149.312c0-23.552 19.136-42.624 42.688-42.624h766.72zM851.904 192H170.688v570.88l51.648-40.576 23.232-18.304h607.168l-0.704-113.408L851.968 192z m-172.8 87.04l60.8 56.832-229.504 245.056a54.4 54.4 0 0 1-76.928 0.256l-140.8-139.904 58.624-59.072 119.68 118.976 208.192-222.144z" fill="#64748b" p-id="2442"></path></g><path d="M3 4 H17 V15 H8 L4 18 V15 H3 Z M14 19 L17 22 L22 16" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+  <g transform="translate(540 1000)">
+    <rect x="10" y="10" width="520" height="230" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="28" y="36" font-size="18" font-weight="700" fill="#0f172a">人员-加</text>
+    
+    <g transform="translate(28 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">原始轮廓</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M831.808 635.968l-0.064 106.624h106.688v85.376h-106.688v106.688h-85.312v-106.688H639.808v-85.312h106.624V635.904h85.376zM512 704.64c15.04 0 29.824 0.384 44.416 1.28v85.312A658.816 658.816 0 0 0 512 789.76c-128.96 0-236.8 35.776-325.248 107.328l-33.088 26.752-53.504-66.176 33.088-26.752C237.312 746.688 364.096 704.64 512 704.64z m0-609.024a190.464 190.464 0 0 1 190.464 190.4v124.16a190.464 190.464 0 1 1-380.928 0v-124.16A190.464 190.464 0 0 1 512 95.616z m0 85.12c-58.176 0-105.344 47.104-105.344 105.28v124.16a105.344 105.344 0 1 0 210.688 0v-124.16c0-58.176-47.168-105.28-105.344-105.28z" fill="#64748b" p-id="2453"></path></g></g>
+    </g>
+    
+    <g transform="translate(198 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">当前中心线</text>
+      <g transform="translate(20 35) scale(4)"><path d="M10 11 A4 4 0 1 1 10 3 A4 4 0 1 1 10 11 Z M3 21 C3.5 16.5 6 14 10 14 C12.5 14 14.5 15 16 16.5 M19 15 V21 M16 18 H22" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="1"/></g>
+    </g>
+    
+    <g transform="translate(368 52)">
+      <rect x="0" y="0" width="136" height="150" rx="10" fill="#ffffff" stroke="#dbe2ea"/>
+      <text x="68" y="19" text-anchor="middle" font-size="12" fill="#64748b">来源叠加</text>
+      <g transform="translate(20 35) scale(4)"><g transform="scale(0.0234375)"><path d="M831.808 635.968l-0.064 106.624h106.688v85.376h-106.688v106.688h-85.312v-106.688H639.808v-85.312h106.624V635.904h85.376zM512 704.64c15.04 0 29.824 0.384 44.416 1.28v85.312A658.816 658.816 0 0 0 512 789.76c-128.96 0-236.8 35.776-325.248 107.328l-33.088 26.752-53.504-66.176 33.088-26.752C237.312 746.688 364.096 704.64 512 704.64z m0-609.024a190.464 190.464 0 0 1 190.464 190.4v124.16a190.464 190.464 0 1 1-380.928 0v-124.16A190.464 190.464 0 0 1 512 95.616z m0 85.12c-58.176 0-105.344 47.104-105.344 105.28v124.16a105.344 105.344 0 1 0 210.688 0v-124.16c0-58.176-47.168-105.28-105.344-105.28z" fill="#64748b" p-id="2453"></path></g><path d="M10 11 A4 4 0 1 1 10 3 A4 4 0 1 1 10 11 Z M3 21 C3.5 16.5 6 14 10 14 C12.5 14 14.5 15 16 16.5 M19 15 V21 M16 18 H22" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" opacity="0.95"/></g>
+    </g>
+  </g>
+</svg>

@@ -16,7 +16,17 @@ type GeminiError = {
   model: string;
 };
 
-const MODELS = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-flash-lite'];
+const DEFAULT_MODELS = ['gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite'];
+const MODEL_TIMEOUT_MS = 18000;
+
+const getModels = () => {
+  const configuredModels = (process.env.GEMINI_MODELS || '')
+    .split(',')
+    .map((model) => model.trim())
+    .filter((model) => /^[a-z0-9.-]+$/i.test(model));
+
+  return configuredModels.length > 0 ? configuredModels : DEFAULT_MODELS;
+};
 
 const parseBody = (body: unknown): RequestBody => {
   if (!body) return {};
@@ -42,8 +52,8 @@ const parseGeminiError = async (response: Response) => {
 
 const shouldTryFallback = (error: GeminiError) => {
   return (
-    [404, 429, 503].includes(error.status) ||
-    /quota|rate|exceeded|resource_exhausted|overloaded|unavailable/i.test(error.detail)
+    [404, 429, 503, 504].includes(error.status) ||
+    /quota|rate|exceeded|resource_exhausted|overloaded|unavailable|timed out/i.test(error.detail)
   );
 };
 
@@ -80,19 +90,37 @@ export default async function handler(req: any, res: any) {
   const attemptedModels: string[] = [];
   let lastError: GeminiError | null = null;
 
-  for (const model of MODELS) {
+  for (const model of getModels()) {
     attemptedModels.push(model);
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: { temperature: 0.1 }
-        })
-      }
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+    let geminiRes: Response;
+
+    try {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: { temperature: 0.1 }
+          })
+        }
+      );
+    } catch (error) {
+      lastError = {
+        status: 504,
+        detail: error instanceof Error && error.name === 'AbortError'
+          ? `Gemini model timed out after ${MODEL_TIMEOUT_MS / 1000} seconds`
+          : error instanceof Error ? error.message : 'Gemini request failed',
+        model
+      };
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!geminiRes.ok) {
       lastError = {

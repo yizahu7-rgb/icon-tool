@@ -1,0 +1,37 @@
+/* Hallmark · macrostructure: Workbench · theme: studied-DNA (source: supplied screenshots) · tone: technical-utilitarian · anchor hue: indigo · pre-emit critique: P5 H5 E5 S5 R5 V4 · contrast: pass (40–41) · nav: N9 · footer: none · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57) */
+:root {
+  --color-hm-page: oklch(98.2% 0.003 264);
+  --color-hm-surface: oklch(99.8% 0.001 264);
+  --color-hm-border: oklch(92.4% 0.007 264);
+  --color-hm-rule: oklch(95% 0.004 264);
+  --color-hm-ink: oklch(22% 0.022 264);
+  --color-hm-copy: oklch(48% 0.024 264);
+  --color-hm-muted: oklch(67% 0.018 264);
+  --color-hm-soft: oklch(96.8% 0.006 264);
+  --color-hm-accent: oklch(58% 0.235 275);
+  --color-hm-accent-strong: oklch(52% 0.245 275);
+  --color-hm-accent-soft: oklch(95% 0.035 275);
+  --color-hm-white: oklch(100% 0 0);
+  --font-hm-display: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-hm-body: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-hm-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --space-hm-xs: 4px;
+  --space-hm-sm: 8px;
+  --space-hm-md: 12px;
+  --space-hm-lg: 16px;
+  --space-hm-xl: 24px;
+  --space-hm-2xl: 32px;
+  --space-hm-3xl: 48px;
+  --text-hm-xs: 0.75rem;
+  --text-hm-sm: 0.875rem;
+  --text-hm-md: 1rem;
+  --text-hm-lg: 1.125rem;
+  --ease-hm-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-hm-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-hm-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-hm-fast: 120ms;
+  --dur-hm-base: 180ms;
+  --rule-hm: 1px;
+  --radius-hm-control: 12px;
+  --radius-hm-card: 20px;
+}

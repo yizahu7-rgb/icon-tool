@@ -1,5 +1,7 @@
 # Codex Handoff
 
+> **归档说明：** 本文件是旧版交接记录。新任务请从 `PROJECT_CONTEXT.md` 开始，并以 `ICON_REDRAW_STANDARD.md`、`ICON_REDRAW_PROGRESS.md`、`HANDOFF.md` 为准；如有冲突，新文档优先。
+
 This document is the project handoff for continuing the same work on another computer with Codex.
 
 ## Project
