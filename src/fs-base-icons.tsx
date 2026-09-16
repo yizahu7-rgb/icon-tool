@@ -34,8 +34,14 @@ interface IconGroup {
 // Product-level removals. Keep these separate from per-user deletedIconIds so
 // a fresh browser, anonymous user, or deployment can never restore them.
 const permanentlyDeletedIconNames = new Set([
+  '拖拽-竖',
   '拖拽-横',
+  '分隔符-斜杠',
+  '交通-出租车',
+  '交通-高铁',
   '勾',
+  '对齐-底',
+  '对齐-左',
   '间距-垂直分布',
   '文字加粗',
   '文字居右',
@@ -46,6 +52,7 @@ const permanentlyDeletedIconNames = new Set([
   '文字下划线',
   '文字两端对齐',
   '文字背景色',
+  '语言-翻译',
   '文字倾斜',
   '文字颜色',
   '自动行高',
@@ -54,11 +61,18 @@ const permanentlyDeletedIconNames = new Set([
   '文字居左',
   '二维码',
   '指纹',
+  '条形码',
   'k线图',
+  '黄金',
+  '相机-禁用',
   '蓝牙',
+  '录音-关闭',
   '最大值',
   '条形图',
-  '散点图'
+  '散点图',
+  '管理',
+  '丰富多元',
+  '联盟链'
 ]);
 
 const groups: readonly IconGroup[] = [

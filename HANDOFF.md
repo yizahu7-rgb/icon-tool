@@ -6,9 +6,10 @@ Continuation brief for resuming this project on another computer or in a new Cod
 
 ## 2026-09-16: Deleted base icons hardened at source level
 
-- The 25 base icons previously hidden only by browser/Firestore tombstones are now permanently excluded by name in `src/fs-base-icons.tsx`.
+- The 39 base icons previously hidden only by browser/Firestore tombstones are now permanently excluded by name in `src/fs-base-icons.tsx`.
+- The latest 14 additions are `拖拽-竖、分隔符-斜杠、交通-出租车、交通-高铁、对齐-底、对齐-左、语言-翻译、条形码、黄金、相机-禁用、录音-关闭、管理、丰富多元、联盟链`.
 - The exclusion runs after stable base IDs are assigned, so existing per-user name overrides and tombstones keep pointing to the same icons.
-- Fresh browsers, anonymous users, and deployments now receive the same 271-icon product library. Raw Iconfont JSON remains an archival source and must not be interpreted as the visible product list.
+- Fresh browsers, anonymous users, and deployments now receive the same 257-icon product library. Raw Iconfont JSON remains an archival source and must not be interpreted as the visible product list.
 - The authoritative excluded-name list is recorded in `ICON_REDRAW_PROGRESS.md`. Do not remove or regenerate around this exclusion.
 
 ## 2026-09-15: Project memory consolidated

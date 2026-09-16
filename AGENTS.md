@@ -60,7 +60,7 @@ Do not change this to a shared global collection unless the user explicitly asks
 
 ### Source-level deleted base icons
 
-The 25 product-owner-deleted base icons listed in `ICON_REDRAW_PROGRESS.md` are hard-excluded in `src/fs-base-icons.tsx`. This exclusion is separate from per-user `deletedIconIds` and must survive fresh browsers, anonymous users, source-data regeneration, and deployment. Keep the filter after stable IDs are assigned; moving it before ID generation would shift IDs and break saved names and tombstones. Raw Iconfont JSON may retain archival source entries but must not make them visible in the product.
+The 39 product-owner-deleted base icons listed in `ICON_REDRAW_PROGRESS.md` are hard-excluded in `src/fs-base-icons.tsx`. This exclusion is separate from per-user `deletedIconIds` and must survive fresh browsers, anonymous users, source-data regeneration, and deployment. Keep the filter after stable IDs are assigned; moving it before ID generation would shift IDs and break saved names and tombstones. Raw Iconfont JSON may retain archival source entries but must not make them visible in the product.
 
 ### Server-side Gemini key
 
