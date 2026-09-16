@@ -58,6 +58,10 @@ artifacts/{appId}/users/{user.uid}/icon_app_state/main
 
 Do not change this to a shared global collection unless the user explicitly asks.
 
+### Source-level deleted base icons
+
+The 25 product-owner-deleted base icons listed in `ICON_REDRAW_PROGRESS.md` are hard-excluded in `src/fs-base-icons.tsx`. This exclusion is separate from per-user `deletedIconIds` and must survive fresh browsers, anonymous users, source-data regeneration, and deployment. Keep the filter after stable IDs are assigned; moving it before ID generation would shift IDs and break saved names and tombstones. Raw Iconfont JSON may retain archival source entries but must not make them visible in the product.
+
 ### Server-side Gemini key
 
 `GEMINI_API_KEY` must exist only in Vercel or the local server environment used by `vercel dev`. Never prefix Gemini secrets with `VITE_` and never commit real keys.

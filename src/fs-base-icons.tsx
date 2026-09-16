@@ -31,6 +31,36 @@ interface IconGroup {
   items: readonly IconSpec[];
 }
 
+// Product-level removals. Keep these separate from per-user deletedIconIds so
+// a fresh browser, anonymous user, or deployment can never restore them.
+const permanentlyDeletedIconNames = new Set([
+  '拖拽-横',
+  '勾',
+  '间距-垂直分布',
+  '文字加粗',
+  '文字居右',
+  '文字居中',
+  '文字删除线',
+  '文字下标',
+  '文字无序',
+  '文字下划线',
+  '文字两端对齐',
+  '文字背景色',
+  '文字倾斜',
+  '文字颜色',
+  '自动行高',
+  '文字有序',
+  '文字上标',
+  '文字居左',
+  '二维码',
+  '指纹',
+  'k线图',
+  '蓝牙',
+  '最大值',
+  '条形图',
+  '散点图'
+]);
+
 const groups: readonly IconGroup[] = [
   {
     category: 'UI & Nav',
@@ -202,7 +232,7 @@ const createFsIcon = (iconName: LucideIconName, displayName: string, semanticNam
   return createMasterGoIcon(fsIconNodes[iconName], `Fs${displayName}`) as React.ElementType<IconSvgProps>;
 };
 
-export const fsBaseIcons = groups.flatMap((group, groupIndex) =>
+const fsBaseIconCandidates = groups.flatMap((group, groupIndex) =>
   group.items.filter(([name]) => !iconfontSolidIconNames.has(name)).map(([name, iconName], itemIndex) => ({
     id: `fs-base-${String(groupIndex + 1).padStart(2, '0')}-${String(itemIndex + 1).padStart(3, '0')}`,
     name,
@@ -210,4 +240,10 @@ export const fsBaseIcons = groups.flatMap((group, groupIndex) =>
     tags: [name, ...name.toLowerCase().split(/[-\s]+/), iconName.toLowerCase(), 'fs', '32px', '基础图标'],
     component: createFsIcon(iconName, `${groupIndex + 1}${itemIndex + 1}`, name)
   }))
+);
+
+// Filter only after IDs are assigned. Filtering earlier would shift stable IDs
+// and disconnect existing per-user names and tombstones from their icons.
+export const fsBaseIcons = fsBaseIconCandidates.filter(
+  (icon) => !permanentlyDeletedIconNames.has(icon.name)
 );
