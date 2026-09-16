@@ -55,6 +55,51 @@ const resolveSemanticCategory = (category: Category): Exclude<SemanticCategory, 
   return 'finance-data';
 };
 
+// Keep the curated local library classification as the product default.
+// IDs are stable because they are assigned before permanent source exclusions.
+const builtInCategoryOverrideGroups: Record<Exclude<SemanticCategory, 'all'>, string[]> = {
+  interface: `
+    fs-base-02-001 fs-base-02-004 fs-base-02-006 fs-base-02-007 fs-base-02-008 fs-base-02-009
+    fs-base-02-015 fs-base-02-017 fs-base-02-019 fs-base-02-022 fs-base-02-026 fs-base-02-027
+    fs-base-02-029 fs-base-02-042 fs-base-05-002 fs-base-05-009 fs-base-06-001 fs-base-06-005
+    fs-base-11-021
+  `.trim().split(/\s+/),
+  editing: `
+    fs-base-01-001 fs-base-01-003 fs-base-01-014 fs-base-01-017 fs-base-01-018 fs-base-01-020
+    fs-base-01-025 fs-base-01-029 fs-base-01-031 fs-base-01-032 fs-base-01-035 fs-base-01-047
+    fs-base-01-048 fs-base-01-050 fs-base-01-054 fs-base-01-057 fs-base-01-058 fs-base-01-061
+    fs-base-01-064 fs-base-01-066 fs-base-01-067 fs-base-03-001 fs-base-03-002 fs-base-03-003
+    fs-base-03-004 fs-base-03-005 fs-base-03-006 fs-base-03-007 fs-base-03-008 fs-base-03-009
+    fs-base-03-012 fs-base-03-013 fs-base-03-015 fs-base-03-016 fs-base-03-017 fs-base-03-018
+    fs-base-03-019 fs-base-03-020 fs-base-03-021 fs-base-03-022 fs-base-03-025 fs-base-03-026
+    fs-base-04-010 fs-base-04-012 fs-base-04-014 fs-base-04-015 fs-base-04-016 fs-base-04-019
+    fs-base-04-021 fs-base-04-023 fs-base-04-024 fs-base-04-025 fs-base-04-026 fs-base-04-027
+    fs-base-04-032 fs-base-05-001 fs-base-05-003 fs-base-05-004 fs-base-05-005 fs-base-05-006
+    fs-base-05-008 fs-base-05-010 fs-base-05-011 fs-base-05-012 fs-base-05-015 fs-base-05-018
+    fs-base-05-023 fs-base-05-024 fs-base-06-007 fs-base-06-012 fs-base-07-001 fs-base-07-002
+    fs-base-07-003 fs-base-07-004 fs-base-07-005 fs-base-09-001 fs-base-09-004 fs-base-09-005
+    fs-base-09-006 fs-base-09-008 fs-base-10-001 fs-base-10-003 fs-base-10-004 fs-base-10-005
+    fs-base-10-007 fs-base-10-008 fs-base-10-009 fs-base-10-010 fs-base-10-011 fs-base-10-015
+    fs-base-10-020 fs-base-11-001 fs-base-11-003 fs-base-11-004 fs-base-11-005 fs-base-11-006
+    fs-base-11-008 fs-base-11-009 fs-base-11-010 fs-base-11-012 fs-base-11-013 fs-base-11-014
+    fs-base-11-015 fs-base-11-016 fs-base-11-019 fs-base-11-020 fs-base-11-023 fs-base-11-025
+    fs-base-11-026
+  `.trim().split(/\s+/),
+  people: `
+    fs-base-01-011 fs-base-01-015 fs-base-01-019 fs-base-01-039 fs-base-02-046 fs-base-04-002
+    fs-base-04-003 fs-base-04-004 fs-base-04-017 fs-base-04-022 fs-base-05-007 fs-base-05-014
+    fs-base-05-016 fs-base-05-017 fs-base-05-019 fs-base-05-021 fs-base-08-001 fs-base-08-008
+    fs-base-10-006 fs-base-10-021 fs-base-10-022 fs-base-11-022
+  `.trim().split(/\s+/),
+  'finance-data': ['fs-base-01-021']
+};
+
+const builtInCategoryOverrides = Object.fromEntries(
+  Object.entries(builtInCategoryOverrideGroups).flatMap(([category, iconIds]) =>
+    iconIds.map((iconId) => [iconId, category])
+  )
+) as Record<string, Exclude<SemanticCategory, 'all'>>;
+
 type IconSvgProps = React.SVGProps<SVGSVGElement> & {
   size?: number | string;
   strokeWidth?: number | string;
@@ -857,7 +902,8 @@ export default function App() {
           icon.name.toLowerCase().includes(normalizedSearch) ||
           icon.tags.some((tag) => tag.toLowerCase().includes(normalizedSearch))
         );
-        const iconCategory = categoryOverrides[icon.id] ?? resolveSemanticCategory(icon.category);
+        const iconCategory =
+          categoryOverrides[icon.id] ?? builtInCategoryOverrides[icon.id] ?? resolveSemanticCategory(icon.category);
         const matchesCategory = activeCategory === 'all' || iconCategory === activeCategory;
         return matchesSearch && matchesCategory;
       }),

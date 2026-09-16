@@ -62,6 +62,10 @@ Do not change this to a shared global collection unless the user explicitly asks
 
 The 39 product-owner-deleted base icons listed in `ICON_REDRAW_PROGRESS.md` are hard-excluded in `src/fs-base-icons.tsx`. This exclusion is separate from per-user `deletedIconIds` and must survive fresh browsers, anonymous users, source-data regeneration, and deployment. Keep the filter after stable IDs are assigned; moving it before ID generation would shift IDs and break saved names and tombstones. Raw Iconfont JSON may retain archival source entries but must not make them visible in the product.
 
+### Source-level curated categories
+
+The product-owner category layout is a product default, not merely maintainer browser state. `src/App.tsx` contains the source-level semantic-category overrides needed to reproduce the approved 257-icon split in every fresh browser and deployment: 67 `interface`, 126 `editing`, 30 `people`, and 34 `finance-data`. Local drag-and-drop remains a maintainer editing workflow, but a release must bake the resulting differences into this map before publishing.
+
 ### Server-side Gemini key
 
 `GEMINI_API_KEY` must exist only in Vercel or the local server environment used by `vercel dev`. Never prefix Gemini secrets with `VITE_` and never commit real keys.

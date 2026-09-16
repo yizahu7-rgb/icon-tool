@@ -4,6 +4,13 @@ Continuation brief for resuming this project on another computer or in a new Cod
 
 > Current entry point: read `PROJECT_CONTEXT.md` first, then `ICON_REDRAW_STANDARD.md` and `ICON_REDRAW_PROGRESS.md`. This file is the detailed decision log. Deleted entries remain excluded.
 
+## 2026-09-16: Curated category layout hardened at source level
+
+- The maintainer's approved local category layout is now reproduced by source-level overrides in `src/App.tsx`; it no longer depends on one browser's local storage when deployed.
+- The 257 visible icons split exactly into 67 `interface` / 基础功能, 126 `editing` / 业务类, 30 `people` / 生活服务, and 34 `finance-data` / 金融数据类.
+- Comparing the approved local layout with the former source defaults found 151 moved icons. Those differences are now the product default for fresh browsers and anonymous users.
+- Drag-and-drop remains local-only and available only on local development hosts. Any later approved drag changes must be folded into the source map before the next release; do not publish while relying only on browser-local overrides.
+
 ## 2026-09-16: Deleted base icons hardened at source level
 
 - The 39 base icons previously hidden only by browser/Firestore tombstones are now permanently excluded by name in `src/fs-base-icons.tsx`.
