@@ -4,6 +4,140 @@ Continuation brief for resuming this project on another computer or in a new Cod
 
 > Current entry point: read `PROJECT_CONTEXT.md` first, then `ICON_REDRAW_STANDARD.md` and `ICON_REDRAW_PROGRESS.md`. This file is the detailed decision log. Deleted entries remain excluded.
 
+## 2026-09-23: remaining selected v2 categories imported as one acceptance batch
+
+- The product owner confirmed Files and explicitly excluded Foods, Gestures, Letters, Math, Numbers, and Weather from the final batch. These six categories were not imported and share the explicit skipped-state behavior.
+- The remaining requested categories were imported together: Image 36, Maps 51, Media 65, System 48, and User 44, for 244 icons total. All preserve official order and `0 0 24 24` viewBoxes and use unique Chinese display labels with English source-name search aliases.
+- Production build and source validation pass. Browser verification confirms the five category counts and first/last labels, zero visible white fill in every category, and no console errors.
+- The local preview defaults to User for combined acceptance. After the final UI cleanup, the sidebar retains the imported categories in reference order and hides all empty/skipped entries.
+- No commit, push, or deployment was requested; wait for combined visual acceptance.
+
+### Sidebar and header cleanup
+
+- The v2 sidebar now renders only the 17 imported non-empty outline categories. All empty/skipped categories are hidden, and the unimplemented Filled entry is hidden until that style has real content.
+- Sidebar controls use the sidebar content width instead of fixed 109px blocks, so the style selector and active-category background remain inside the right divider.
+- The remaining standalone Outline selector was subsequently removed as well. With only one available style it had no interaction value; categories now begin at the sidebar's top content edge and the selector's CSS is deleted.
+- The header total is derived from the imported category arrays and currently resolves to 940 icons. The stale 2355 count, separator, and Design Source File link were removed.
+- The production build passes. The in-app browser refused an automated localhost refresh under its URL policy, so final visual acceptance remains with the already-open local preview after a manual refresh.
+
+### Product exclusions and fixed-corner exceptions
+
+- The owner permanently removed five Media icons—`pause-circle`, `play`, `play-circle`, `stop`, `stop-circle`—and System `loading`. The importer now excludes these six source names so category regeneration cannot restore them. Media is 60 and System is 47; the combined batch is 238.
+- System `menu-application`, `more`, and `ellipsis` remain available but never receive global corner adjustment. Both preview rendering and copied SVG serialization force their applied corner radius to zero, preserving the original square dot geometry.
+- Browser verification confirms the six deleted labels are absent and the corrected category counts are Media (60) and System (47).
+
+## 2026-09-23: TDesign-style v2 File category awaiting acceptance
+
+- The product owner confirmed `描边 → 文档`, explicitly skipped `其他` and `表情`, and advanced directly to Files. Neither skipped category has local icon data; both show an explicit skipped-state message without changing the active category.
+- `描边 → 文件` contains all 96 official icons from TDesign's `manifest.outline.File`, from `bill` through `upload-1`, in official order with unique Chinese display labels and English source-name search aliases. All preserve `0 0 24 24` viewBoxes.
+- Visible format and product labels are fully localized into Chinese semantic names, including comma-separated, data-exchange, markup-text, note, mail, portable-document, presentation, plain-text, word-processing, and configuration files.
+- Source validation and the production build pass. Browser verification shows File (96), English `file-code` finds the two Chinese code-file variants, no visible white fill remains, skipped Other / Emoji messages are correct, and the console is clean.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Foods.
+
+## 2026-09-23: TDesign-style v2 Document category awaiting acceptance
+
+- The product owner confirmed the corrected `描边 → 设备` category and advanced to Documents.
+- `描边 → 文档` contains all 67 official icons from TDesign's `manifest.outline.Document`, from `abstract` through `divider-1`, in official order with unique Chinese display labels and English source-name search aliases.
+- Sixty-six icons preserve `0 0 24 24`; upstream `font-background` intentionally preserves its original `0 0 24 25` viewBox and is centered by the existing square-fit transform.
+- Ambiguous upstream labels such as `bulletpoint`, `functions`, `space`, and `list-bug` are corrected to clear Chinese UI terms. Hard-coded black fills in `summary` and the point details of `automatic-numbering` now use `currentColor`.
+- Source validation, the production build, and browser checks pass. Browser verification shows Document (67), searching `文本框` returns the four language-specific text-box icons, all 32 outline-mask fills are transparent, no visible white fill remains, `summary` resolves to the configured primary color, and the console is clean.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Other.
+
+## 2026-09-23: TDesign-style v2 Device category awaiting acceptance
+
+- The product owner confirmed `描边 → 开发` and advanced to the next category.
+- `描边 → 设备` now contains all 74 official icons from TDesign's `manifest.outline.Device`, from `airplay-wave` through `keyboard-1`, in official order with unique Chinese display labels and English source-name search aliases.
+- Ambiguous or mistranslated upstream keywords for `call-off`, `mobile`, `mode-light`, `rss`, `video-camera`, and `watch` are replaced with clear Chinese labels and search terms.
+- Source validation passes for count, order, unique names, unique Chinese labels, and all `0 0 24 24` viewBoxes. The production build passes.
+- Browser verification shows Device (74), searching `电话卡` returns exactly three SIM-card variants, all 71 fill nodes are transparent, no visible white fill remains, and the console is clean.
+- After visual review, all dot-sized interior details were explicitly exempted from the global corner control. The geometry engine now preserves independent subpaths whose source bounds are at most `0.25 × 0.25`, including dots embedded in a `stroke1` path. Targeted tests confirm the two `data` indicators and the `mobile-vibrate` home dot remain byte-equivalent from radius 0 to 6 while surrounding outer corners still change.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Documents.
+
+## 2026-09-22: TDesign-style v2 Development category awaiting acceptance
+
+- The product owner confirmed `描边 → 设计` and advanced to the next category.
+- `描边 → 开发` now contains all 27 official icons from TDesign's `manifest.outline.Development`, from `braces` through `terminal-window`, in official order with unique Chinese display labels and English source-name search aliases.
+- Upstream mislabeled `braces` as dental braces in its Chinese keywords; the local importer corrects its search terms to `花括号 / 大括号`, while the three bracket forms display distinctly as `花括号 / 方括号 / 圆括号`.
+- Intrinsic large curves are now protected from the global corner-radius control. Existing curve radii at or above 2.5 source units—such as Git node circles, repository shells, book spines, and large bends—remain unchanged, while small line-defined fillets can still be adjusted.
+- Targeted geometry checks at radius 4 preserve the original `git-repository` spine curve and `git-merge` bend while still rounding an ordinary line-only corner. Browser verification shows Development (27), the bracket search returns all three corrected labels, all 47 fill nodes are transparent, and the console is clean.
+- Source validation passes for count, order, unique names, unique Chinese labels, and all `0 0 24 24` viewBoxes. No commit, push, or deployment was requested; wait for visual acceptance before importing Devices.
+
+## 2026-09-22: TDesign-style v2 Design category awaiting acceptance
+
+- The product owner advanced to the next category, confirming `描边 → 组件` after its outline-fill correction.
+- `描边 → 设计` now contains all 43 official icons from TDesign's `manifest.outline.Design`, from `anticlockwise` through `view-column`, in official order with unique Chinese display labels and English source-name search aliases.
+- TDesign treats `drag-drop` as a solid `specifiedIcon`, but the product owner explicitly requested a linear redraw. The importer now substitutes a `fill="none"` centerline version: overlapping artboards live in `stroke1`, while the pointer stays in `stroke2` so exterior-only corner editing cannot deform it.
+- Browser inspection confirms the redraw contains exactly two paths and both resolve to `fill: none`; the Design category remains at 43 icons and the console is clean.
+- Source validation passes for count, order, unique names, unique Chinese labels, and all `0 0 24 24` viewBoxes. No commit, push, or deployment was requested; wait for visual acceptance before importing Development.
+
+## 2026-09-22: TDesign-style v2 Component category awaiting acceptance
+
+- The product owner requested the next group, which confirms the preceding `描边 → 沟通` category.
+- `描边 → 组件` now contains all 39 official icons from TDesign's `manifest.outline.Component`, from `button` through `vertical`, preserving official SVG geometry, viewBoxes, fill-layer geometry, and category order.
+- All 39 cards use unique Chinese labels while official English names remain stable identifiers and search aliases. The page now defaults to Component; previously imported categories remain switchable and Brand / Buildings remain explicitly skipped.
+- Outline-mode `fill1 / fill2` layers now follow TDesign's website pipeline: source white values are treated as configurable layer placeholders, preview passes `transparent`, and copied SVGs explicitly serialize those layers as `fill="transparent"`. Their geometry, IDs, and source order remain intact; future occlusion requirements must use gaps, clipping, or masks rather than a background-colored white fill.
+- Browser verification on Component found 49 fill layers and 58 painted descendants; every computed fill was transparent, no visible white remained, and the console had no errors. `npm run build` passes.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Design.
+
+## 2026-09-22: TDesign-style v2 Communication category awaiting acceptance
+
+- The product owner requested the next group, which confirms the preceding `描边 → 图表` category.
+- `描边 → 沟通` now contains all 22 official icons from TDesign's `manifest.outline.Communication`, from `chat` through `tips-double`, preserving official SVG geometry, viewBoxes, layer IDs, masking fills, and category order.
+- All 22 cards use unique Chinese labels while official English names remain stable identifiers and search aliases. The page now defaults to Communication; previously imported categories remain switchable and Brand / Buildings remain explicitly skipped.
+- Source and browser verification passed: count and order match the official manifest, all labels are unique Chinese names, English `chat-bubble` finds four icons, Chinese `问卷` finds two, Charts → Communication switching works, and skipped Brand / Buildings now show an explicit skipped-state message without changing category. The Vite build passes.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Components.
+
+## 2026-09-22: TDesign-style v2 Charts category awaiting acceptance
+
+- The product owner advanced the phased review, which confirms the preceding `描边 → 箭头` category.
+- At the product owner's explicit request, `描边 → 品牌` and `描边 → 建筑` were skipped without importing local data or marking either category complete.
+- `描边 → 图表` now contains all 44 official icons from TDesign's `manifest.outline.Charts`, from `activity` through `tree-list`, preserving official SVG geometry, viewBoxes, layer IDs, masking fills, and category order.
+- All 44 cards use unique Chinese labels while official English names remain stable identifiers and search aliases. The page now defaults to Charts; previously imported categories remain switchable from the left rail.
+- Source-level verification passed: count and order match the official manifest, names and labels are unique, every label is Chinese, and the `chart-line` / `树形` searches return the expected five / six icons. The Vite build passes; visual acceptance remains pending.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Communication.
+
+## 2026-09-21: TDesign-style v2 Arrows category awaiting acceptance
+
+- The product owner advanced the phased review, which confirms the preceding `描边 → 警报` category.
+- `描边 → 箭头` now contains all 86 official icons from TDesign's `manifest.outline.Arrows`, from `arrow-down` through `fullscreen`, preserving official SVG geometry, viewBoxes, layer IDs, masking fills, and category order.
+- All 86 cards use concise Chinese labels while official English names remain stable identifiers and search aliases. The page now defaults to Arrows; Smart, Action, and Alert remain switchable from the left rail.
+- Local browser verification passed: the default view shows `箭头 (86)` with 86 unique Chinese labels, English `chevron-right` finds six right-chevron variants, Chinese `全屏` finds five fullscreen variants, Alert → Arrows switching works, and the console has no errors.
+- No commit, push, or deployment was requested; wait for visual acceptance before importing Brand.
+
+## 2026-09-21: TDesign-style v2 Alert category awaiting acceptance
+
+- The product owner advanced the phased review, which confirms the preceding `描边 → 行动` category after its `api` center-dot fix.
+- `描边 → 警报` now contains all 15 official icons from TDesign's `manifest.outline.Alert`, from `check-circle` through `time`, preserving official SVG geometry, viewBoxes, layer IDs, masking fills, and category order.
+- All 15 cards use concise Chinese labels while official English names remain stable identifiers and search aliases. The page now defaults to Alert; Smart and Action remain switchable from the left rail.
+- The new category uses the existing v2 size, physical-stroke, exterior-only corner-radius, color, and MasterGo-copy pipeline. No commit, push, or deployment was requested; wait for visual acceptance before importing Arrows.
+- Alert's notification SVGs nest the clapper stroke inside the upstream `stroke1` group while duplicating that geometry in `fill2`. Corner targeting now excludes geometry represented by `fill2 / stroke2`, so those internal clappers remain unchanged without altering the official color hierarchy.
+- Local browser verification passed: the default view shows `警报 (15)` in official order with Chinese labels; English `notification` finds the three notification variants, Chinese `盾牌` finds `盾牌错误`, Action → Alert switching works, and the console has no errors.
+
+## 2026-09-18: TDesign-style v2 Action category awaiting acceptance
+
+- The previously reviewed `描边 → 智能` category remains available with all 25 official SVGs.
+- `描边 → 行动` now contains all 164 icons from TDesign's official `manifest.outline.Action` list, from `ability-open` through `zoom-out`, preserving official category order, `24×24` viewBoxes, element hierarchy, path order, layer IDs, white masking fills, and square-cap strokes.
+- The left category rail now switches between the imported Smart and Action sets. The page defaults to Action while this phase is awaiting review; categories not yet imported still show the staged-import notice.
+- Shared v2 SVG typing/serialization moved to `src/tdesign-icons.ts`; `scripts/import-tdesign-category.mjs` provides a repeatable official-source import path for later categories.
+- All 189 imported icon cards now display concise Chinese names. Official English source names remain stable internal identifiers and search aliases; visible header, source-file link, copy feedback, radius output, and default-color text are Chinese as well.
+- Global corner-radius editing now targets only the outer/main `stroke1` layer and its matching `fill1` mask. Internal `stroke2 / fill2` symbols and details stay unchanged in both preview and copied SVG; future generated icons must preserve that layer separation instead of mixing outer and inner corners in one path.
+- The upstream `api` icon mixed its center dot into `stroke1`; v2 now splits that dot into `stroke2`, and the importer carries the same semantic override so regeneration cannot reintroduce the disappearing-dot bug.
+- `npm run build` passes. Browser verification confirmed `行动 (164)`, first/last icon order, Smart → Action switching, and no console errors. Do not import the next category, commit/push, or deploy until the product owner confirms Action.
+
+## 2026-09-17: TDesign-style v2 Smart category accepted
+
+- Release v1.0 remains fixed at tag `v1.0.0` / commit `920aca8`; v2 work is isolated on `codex/tdesign-v2` and has not been deployed.
+- The default v2 page now follows the complete TDesign reference for `描边 → 智能`: a centered fixed 1200px resource workspace, 113px category rail, 670px six-column icon area, 305px settings panel, resource header/search, and all 25 icon names in official order.
+- An early screenshot-scaled draft used 42px icons and 18px names; it was rejected as too large. The page now uses the upstream CSS scale: 30px icons, 12px names, and 100px icon cells.
+- The 25 icons preserve the upstream TDesign SVG viewBoxes, multi-element order, 2px square-cap strokes, white masking/fill layers, and sparkle layers. They are intentionally not converted to the v1 FS single-path format.
+- New v2 drawings and future v2-generated icons now use `TDESIGN_V2_STANDARD.md`: a `32×32` master, `2px` inset on every side, a `28×28` maximum drawing area, and four centerline keylines—horizontal `26×22`, square `24×24`, vertical `22×26`, and circle `28×28`. Official imported TDesign SVGs still preserve their native viewBoxes; the new 32px grid applies only to newly created v2 assets.
+- The same v2 standard treats keylines as optical guides rather than deformation targets, allows semantically necessary overhangs inside the 32px artboard, requires 45° or 15°-multiple angle rhythm for both positive and negative space, and uses grid-tangent terminal cuts for typographic or perspective forms instead of accidental wedge-shaped ends.
+- Composite-icon gaps on the 32px v2 master are capped at `2.5px` in `0.5px` increments and scale proportionally for the 16/24/48px outputs.
+- v2 preview and copy now treat stroke width and corner radius as physical values. Exported paths are baked into the selected 16/24/32/48 coordinate system before the chosen stroke width is written, so MasterGo no longer scales either setting with the original 24-unit viewBox. Rounded paths remain editable vectors, but plain SVG cannot preserve MasterGo's non-destructive node-radius metadata; that would require a MasterGo plugin/API integration.
+- Clicking an icon copies its standalone official SVG. `/?version=1` keeps the existing v1 application reachable during phased development.
+- TDesign's MIT notice is stored in `THIRD_PARTY_NOTICES.md`. Detailed phase status is in `TDESIGN_V2_PROGRESS.md`.
+- `npm run build` passed. A 2048×1086 browser measurement confirmed the 1200px centered workspace and exact internal column widths; search interaction also passed. The product owner then requested the next category, which closes Smart review and starts the Action phase. No commit, push, or deployment was requested.
+
 ## 2026-09-16: Curated category layout hardened at source level
 
 - The maintainer's approved local category layout is now reproduced by source-level overrides in `src/App.tsx`; it no longer depends on one browser's local storage when deployed.

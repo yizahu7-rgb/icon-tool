@@ -1,0 +1,11 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="stroke1">
+    <path d="M4 6H28V26H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
+  <g id="stroke2">
+    <path d="M14 13.5A2.75 2.75 0 1 1 8.5 13.5A2.75 2.75 0 1 1 14 13.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+    <path d="M7.5 21C9.75 18.5 13.25 18.5 15.5 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+    <path d="M20 12.5H24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+    <path d="M20 18.5H24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"/>
+  </g>
+</svg>

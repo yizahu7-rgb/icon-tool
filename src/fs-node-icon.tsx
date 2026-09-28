@@ -15,6 +15,8 @@ type PathCommand =
 const format = (value: number) => String(Number(value.toFixed(3)));
 const point = (x: number, y: number): Point => [x, y];
 const pathCache = new Map<string, string>();
+const protectedIntrinsicRadius = 2.5;
+const protectedDetailExtent = 0.25;
 
 const tokenizePath = (value: string) =>
   value.match(/[a-zA-Z]|[-+]?(?:\d*\.?\d+)(?:e[-+]?\d+)?/gi) ?? [];
@@ -274,12 +276,26 @@ const transformParsedPath = (input: PathCommand[], radius: number) => {
     const hasCurves = drawable.some((command) => ['A', 'C', 'Q'].includes(command.type));
     const closed = drawable[drawable.length - 1]?.type === 'Z';
 
+    const detailPoints = items.flatMap((command) => {
+      if (command.type === 'C') return [command.end, command.control1, command.control2];
+      if (command.type === 'Q') return [command.end, command.control];
+      return [command.end];
+    });
+    const detailXs = detailPoints.map(([x]) => x);
+    const detailYs = detailPoints.map(([, y]) => y);
+    const detailWidth = Math.max(...detailXs) - Math.min(...detailXs);
+    const detailHeight = Math.max(...detailYs) - Math.min(...detailYs);
+    const isProtectedPointDetail = detailWidth <= protectedDetailExtent && detailHeight <= protectedDetailExtent;
+
     if (!hasCurves) {
       const lines = drawable.filter((command) => command.type === 'L');
       const points = [move.end, ...lines.map((command) => command.end)];
       const lastPoint = points[points.length - 1];
       if (closed && points.length > 1 && lastPoint?.[0] === points[0][0] && lastPoint?.[1] === points[0][1]) points.pop();
-      return roundedPolyline(points, radius, closed);
+      // Tiny closed subpaths are semantic dots, indicators, or punctuation.
+      // They must keep their source geometry even when they share stroke1 with
+      // an adjustable outer silhouette.
+      return roundedPolyline(points, isProtectedPointDetail ? 0 : radius, closed);
     }
 
     const overrides = new Map<number, { start: Point; end: Point; radius: number; sweep: number } | null>();
@@ -293,7 +309,12 @@ const transformParsedPath = (input: PathCommand[], radius: number) => {
       let incoming: Point | null = null;
       let outgoing: Point | null = null;
       if (curve.type === 'A') {
-        if (curve.largeArc !== 0 || Math.abs(curve.rotation) > 0.001 || Math.abs(curve.rx - curve.ry) > 0.001 || curve.rx > 3.25) continue;
+        if (
+          curve.largeArc !== 0
+          || Math.abs(curve.rotation) > 0.001
+          || Math.abs(curve.rx - curve.ry) > 0.001
+          || curve.rx >= protectedIntrinsicRadius
+        ) continue;
         incoming = unit(previous.start, previous.end);
         outgoing = unit(next.start, next.end);
       } else if (curve.type === 'C') {
@@ -318,6 +339,10 @@ const transformParsedPath = (input: PathCommand[], radius: number) => {
       const oldIncoming = Math.hypot(corner[0] - curve.start[0], corner[1] - curve.start[1]);
       const oldOutgoing = Math.hypot(corner[0] - curve.end[0], corner[1] - curve.end[1]);
       const sourceRadius = curve.type === 'A' ? curve.rx : Math.max(oldIncoming, oldOutgoing);
+      // Large curves define the icon's silhouette (circles, nodes, book spines, etc.).
+      // The global radius control may tune small corner fillets, but must not reshape
+      // these intrinsic semantic curves.
+      if (sourceRadius >= protectedIntrinsicRadius) continue;
       if (oldIncoming > Math.max(5, sourceRadius * 2.75) || oldOutgoing > Math.max(5, sourceRadius * 2.75)) continue;
       const incomingDot = (corner[0] - curve.start[0]) * incoming[0] + (corner[1] - curve.start[1]) * incoming[1];
       const outgoingDot = (corner[0] - curve.end[0]) * outgoing[0] + (corner[1] - curve.end[1]) * outgoing[1];

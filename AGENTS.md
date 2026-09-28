@@ -14,6 +14,8 @@ Project memory lives in the repository, not in old chat history. Before changing
 
 For batch work, only process the current group recorded in the progress file, then build, refresh the local preview, and wait for user confirmation. Do not infer completion from automated checks.
 
+For TDesign-style v2 work, read `TDESIGN_V2_STANDARD.md` and `TDESIGN_V2_PROGRESS.md` after the mandatory files above. The v2 `32×32` generation grid and layered SVG rules must not be mixed with the v1 single-path `FS-LINE-2026.09` contract.
+
 ## Project Summary
 
 `icon-tool` / `FS后台设计 Icon库` is a deployable internal React tool. Teammates can browse and filter a source-matched AntChain/SDICS line-icon library, copy or download icons, tune size, stroke width, and geometric corner radius, and generate custom SVG icons from text or reference images.

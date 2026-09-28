@@ -1,0 +1,9 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="stroke1">
+    <path d="M11 5H7L5 7V29H27V7L25 5H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path data-corner-fixed="true" d="M11 5V3H21V5H11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
+  <g id="stroke2">
+    <path d="M11 12L21 22M21 12L11 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+  </g>
+</svg>

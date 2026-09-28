@@ -1,10 +1,12 @@
 # icon-tool 项目续接总览
 
-> 文档更新时间：2026-09-16  
-> 当前产品：`FS后台设计 Icon库`  
-> 当前代码分支：`main`  
-> 当前预览：`http://127.0.0.1:4173/`  
-> 当前停点：现有可见图标均已完成重绘；其中 6 枚尺寸微调后等待用户复核，不得自行开启新批次。
+> 文档更新时间：2026-09-23
+> 当前产品：`FS后台设计 Icon库` v1.0 + TDesign 风格 v2 开发版
+> 当前代码分支：`codex/tdesign-v2`；v1.0 固定于 `v1.0.0` 标签
+> 当前预览：`http://127.0.0.1:4173/`
+> 当前停点：v2 在此前已确认分类之外，新增「描边 → 图片」36 枚、「描边 → 地图」51 枚、「描边 → 媒体」60 枚、「描边 → 系统」47 枚和「描边 → 用户」44 枚，当前共 238 枚 TDesign 官方 SVG，等待一次性验收；页面共展示 17 个有内容的描边分类、940 枚图标，空分类与无切换意义的样式控件已隐藏，确认前不发布线上。
+
+v2 的尺寸、描边和圆角均按物理像素值处理：复制 SVG 时把官方 viewBox 几何烘焙到所选 `16/24/32/48` 尺寸，MasterGo 导入后不会再次按 24 单位画布缩放描边或圆角。圆角以可编辑弧线路径保存；普通 SVG 无法携带 MasterGo 私有的非破坏性节点圆角数值。
 
 本文件是新 Codex 任务或新开发者进入本项目的第一入口。项目知识以仓库内 Markdown 为准，不依赖旧聊天记录。
 
@@ -19,6 +21,8 @@
 5. `AGENTS.md`：仓库级开发约束。
 
 `CODEX_HANDOFF.md` 是旧交接资料，只能用于追溯历史，不能覆盖以上文件。
+
+v1 原有图标的重绘进度继续以 `ICON_REDRAW_PROGRESS.md` 为准；TDesign 风格 v2 的绘制与生成规范记录在 `TDESIGN_V2_STANDARD.md`，分阶段进度记录在 `TDESIGN_V2_PROGRESS.md`，两套图标规则不得混用。
 
 ## 2. 项目目标与工作边界
 
@@ -87,6 +91,25 @@
 | `src/fs-parametric-icons.tsx` | 随描边或圆角动态变化的特殊参数化图标 |
 | `src/download-icon-geometry.ts` | `下载`样板的中心线与轮廓几何 |
 | `src/home-icon-geometry.ts` | `主页`样板的中心线与内描边几何 |
+| `src/tdesign-icons.ts` | v2 官方 SVG 的通用数据类型与序列化 |
+| `src/tdesign-smart-icons.ts` | v2「描边 → 智能」25 枚官方 SVG 数据 |
+| `src/tdesign-action-icons.ts` | v2「描边 → 行动」164 枚官方 SVG 数据 |
+| `src/tdesign-alert-icons.ts` | v2「描边 → 警报」15 枚官方 SVG 数据 |
+| `src/tdesign-arrow-icons.ts` | v2「描边 → 箭头」86 枚官方 SVG 数据 |
+| `src/tdesign-chart-icons.ts` | v2「描边 → 图表」44 枚官方 SVG 数据 |
+| `src/tdesign-communication-icons.ts` | v2「描边 → 沟通」22 枚官方 SVG 数据 |
+| `src/tdesign-component-icons.ts` | v2「描边 → 组件」39 枚官方 SVG 数据 |
+| `src/tdesign-design-icons.ts` | v2「描边 → 设计」43 枚官方 SVG 数据 |
+| `src/tdesign-development-icons.ts` | v2「描边 → 开发」27 枚官方 SVG 数据 |
+| `src/tdesign-device-icons.ts` | v2「描边 → 设备」74 枚官方 SVG 数据 |
+| `src/tdesign-document-icons.ts` | v2「描边 → 文档」67 枚官方 SVG 数据 |
+| `src/tdesign-file-icons.ts` | v2「描边 → 文件」96 枚官方 SVG 数据 |
+| `src/tdesign-image-icons.ts` | v2「描边 → 图片」36 枚官方 SVG 数据 |
+| `src/tdesign-map-icons.ts` | v2「描边 → 地图」51 枚官方 SVG 数据 |
+| `src/tdesign-media-icons.ts` | v2「描边 → 媒体」60 枚产品保留 SVG 数据 |
+| `src/tdesign-system-icons.ts` | v2「描边 → 系统」47 枚产品保留 SVG 数据 |
+| `src/tdesign-user-icons.ts` | v2「描边 → 用户」44 枚官方 SVG 数据 |
+| `scripts/import-tdesign-category.mjs` | 从 TDesign 官方仓库的分类清单和 SVG 批量生成本地分类数据 |
 | `api/generate-icon.ts` | 服务端 Gemini 请求与模型回退 |
 | `api/models.ts` | 受令牌保护的模型诊断接口 |
 | `firestore.rules` | Firestore 权限规则 |
@@ -94,6 +117,8 @@
 | `scripts/generate-iconfont-calibration-sheet.mjs` | 生成原轮廓、中心线和叠加对照校准图 |
 | `ICON_REDRAW_STANDARD.md` | 人工重绘与 AI 生成都必须遵守的规范 |
 | `ICON_REDRAW_PROGRESS.md` | 当前批次、确认数量和执行顺序 |
+| `TDESIGN_V2_STANDARD.md` | TDesign 风格 v2 新绘制与新生成图标的 32px 母版、Keyline、分层和导出规范 |
+| `TDESIGN_V2_PROGRESS.md` | TDesign 风格 v2 的分类导入和分阶段验收状态 |
 | `HANDOFF.md` | 已发生的设计决策、修正记录和工程背景 |
 | `AGENTS.md` | 新任务必须遵守的仓库级工作方式 |
 
