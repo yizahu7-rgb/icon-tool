@@ -1,8 +1,3 @@
-import React from 'react';
-import type { FsIconNode } from './fs-icon-nodes.generated';
-import type { FsParametricIconProps } from './fs-parametric-icons';
-import { OpticalGridGroup } from './icon-grid';
-
 type Point = readonly [number, number];
 
 type PathCommand =
@@ -500,74 +495,4 @@ export const transformMasterGoPath = (value: string, matrix: SvgMatrixLike) => {
     }
     return 'Z';
   }).join(' ');
-};
-
-const parsePoints = (value: string) => {
-  const values = value.trim().split(/[\s,]+/).map(Number);
-  const points: Point[] = [];
-  for (let index = 0; index + 1 < values.length; index += 2) points.push(point(values[index], values[index + 1]));
-  return points;
-};
-
-const renderNode = ([tag, sourceAttributes]: FsIconNode, index: number, radius: number) => {
-  const { key: _sourceKey, ...attributes } = sourceAttributes;
-  const props: Record<string, string | number> = { ...attributes, key: `${tag}-${index}` };
-
-  if (tag === 'rect') {
-    const width = Number(attributes.width ?? 0);
-    const height = Number(attributes.height ?? 0);
-    props.rx = Math.min(radius, width / 2, height / 2);
-    props.ry = props.rx;
-  }
-
-  if (tag === 'polyline' || tag === 'polygon') {
-    const points = parsePoints(String(attributes.points ?? ''));
-    return React.createElement('path', {
-      ...props,
-      points: undefined,
-      d: roundedPolyline(points, radius, tag === 'polygon'),
-      'data-mastergo-editable-d': roundedPolyline(points, 0, tag === 'polygon')
-    });
-  }
-
-  if (tag === 'path' && typeof attributes.d === 'string') {
-    props.d = transformPath(attributes.d, radius);
-    props['data-mastergo-editable-d'] = transformPath(attributes.d, 0);
-  }
-  return React.createElement(tag, props);
-};
-
-export const createMasterGoIcon = (nodes: readonly FsIconNode[], displayName: string) => {
-  const MasterGoIcon = ({
-    size = 24,
-    strokeWidth = 2,
-    cornerRadius = 0,
-    strokeLinecap = 'round',
-    strokeLinejoin = 'round',
-    ...props
-  }: FsParametricIconProps) => {
-    const radius = Math.max(0, cornerRadius);
-    return (
-      <svg
-        {...props}
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        strokeLinecap={strokeLinecap}
-        strokeLinejoin={strokeLinejoin}
-        aria-hidden="true"
-        focusable="false"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <OpticalGridGroup strokeWidth={strokeWidth}>
-          {(geometryScale) => nodes.map((node, index) => renderNode(node, index, radius / geometryScale))}
-        </OpticalGridGroup>
-      </svg>
-    );
-  };
-  MasterGoIcon.displayName = displayName;
-  return MasterGoIcon;
 };
