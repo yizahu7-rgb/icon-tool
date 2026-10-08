@@ -13,7 +13,8 @@
 - 图标母版：32×32；SVG 源图使用中心线描边，Iconfont 导出时转换为非零填充的闭合轮廓。
 - 图标库：`src/tdesign-*-icons.ts`；页面：`src/TDesignSmartPage.tsx`。
 - `src/fs-node-icon.tsx` 只保留 v2 所需的 SVG 路径圆角与变换工具，不能恢复旧版 24×24 图标组件。
-- AI：浏览器调用 `POST /api/generate-icon`，服务端再请求 Gemini；密钥仅使用 `GEMINI_API_KEY`，绝不能使用 `VITE_` 前缀。
+- AI：浏览器调用 `POST /api/generate-icon`，服务端再请求 OpenAI 或 OpenAI-compatible API；密钥仅使用服务端 `OPENAI_API_KEY`，绝不能使用 `VITE_` 前缀。
+- 服务端用 `OPENAI_BASE_URL` 配置 API 根地址，用 `OPENAI_API_MODE` 选择 `responses` 或 `chat_completions`；`OPENAI_MODEL` 优先于 `OPENAI_MODELS`。
 
 ## 修改原则
 

@@ -548,7 +548,7 @@ export default function TDesignSmartPage() {
         concept: concept || '参考图中的主体',
         hasReferenceImage: Boolean(referenceImageBase64)
       });
-      const useLocalModel = import.meta.env.DEV;
+      const useLocalModel = import.meta.env.VITE_USE_LOCAL_MODEL === 'true';
       const localContent: Array<Record<string, unknown>> = [{ type: 'text', text: prompt }];
       if (referenceImageBase64 && referenceImageMimeType) {
         localContent.push({
