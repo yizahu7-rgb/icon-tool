@@ -45,7 +45,7 @@ type OpenAIResponse = {
 type OpenAIApiMode = 'responses' | 'chat_completions';
 
 const DEFAULT_MODELS = ['gpt-6.1-sol', 'gpt-6-luna'];
-const MODEL_TIMEOUT_MS = 26000;
+const MODEL_TIME_BUDGET_MS = 50000;
 
 const getModels = () => {
   const singleModel = process.env.OPENAI_MODEL?.trim();
@@ -175,13 +175,15 @@ export default async function handler(req: any, res: any) {
     });
   }
 
+  const models = getModels();
+  const modelTimeoutMs = Math.floor(MODEL_TIME_BUDGET_MS / models.length);
   const attemptedModels: string[] = [];
   let lastError: OpenAIError | null = null;
 
-  for (const model of getModels()) {
+  for (const model of models) {
     attemptedModels.push(model);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), modelTimeoutMs);
     let openAIRes: Response;
 
     try {
@@ -214,7 +216,7 @@ export default async function handler(req: any, res: any) {
       lastError = {
         status: 504,
         detail: error instanceof Error && error.name === 'AbortError'
-          ? `OpenAI model timed out after ${MODEL_TIMEOUT_MS / 1000} seconds`
+          ? `OpenAI model timed out after ${modelTimeoutMs / 1000} seconds`
           : error instanceof Error ? error.message : 'OpenAI request failed',
         model
       };
