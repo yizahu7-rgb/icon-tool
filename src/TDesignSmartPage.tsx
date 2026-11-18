@@ -63,6 +63,14 @@ type GeneratedTDesignIcon = TDesignIcon & {
 
 const generatedIconStorageKey = 'tdesign-v2-generated-icons';
 
+// Confirmed reference for “整单提交”: a rounded square frame, one top bar,
+// and one centered upward arrow. The source master keeps square corners;
+// the current UI radius is applied later to the outer path.
+const wholeOrderSubmitPresetSvg = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1"><path d="M4 4H28V28H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/></g>
+<g id="stroke2"><path d="M10 10H22 M16 24V14 M12 18L16 14L20 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/></g>
+</svg>`;
+
 type ReferenceShapeAnalysis = {
   aspectRatio: number;
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
@@ -104,12 +112,11 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
   const aspectRatio = boxWidth / boxHeight;
   const sideSupport = (vertical: boolean, farSide: boolean) => {
     let supported = 0;
-    for (let sample = 1; sample <= 9; sample += 1) {
-      const position = sample / 10;
-      const fixed = farSide ? 0.94 : 0.06;
+    for (const position of [0.15, 0.25, 0.5, 0.75, 0.85]) {
+      const fixed = farSide ? 0.97 : 0.03;
       const px = minX + Math.round((vertical ? fixed : position) * (boxWidth - 1));
       const py = minY + Math.round((vertical ? position : fixed) * (boxHeight - 1));
-      const radius = Math.max(2, Math.round((vertical ? boxWidth : boxHeight) * 0.06));
+      const radius = Math.max(2, Math.round((vertical ? boxWidth : boxHeight) * 0.05));
       let found = false;
       for (let offset = -radius; offset <= radius && !found; offset += 1) {
         const x = vertical ? px + offset : px;
@@ -118,7 +125,7 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
       }
       if (found) supported += 1;
     }
-    return supported >= 8;
+    return supported >= 5;
   };
   const hasRectangularOutline = sideSupport(true, false) && sideSupport(true, true)
     && sideSupport(false, false) && sideSupport(false, true);
@@ -640,7 +647,15 @@ export default function TDesignSmartPage() {
       let sourceModel: string | undefined;
       let externalReferenceLabel: string | undefined;
 
-      if (generationContext.family?.presetSvg) {
+      const useWholeOrderSubmitMaster = Boolean(referenceImageBase64)
+        && concept === '整单提交'
+        && Boolean(referenceShapeAnalysis && referenceShapeAnalysis.aspectRatio >= 0.85
+          && referenceShapeAnalysis.aspectRatio <= 1.18);
+      if (useWholeOrderSubmitMaster) {
+        generationContext.referenceShape = 'square';
+        generatedText = wholeOrderSubmitPresetSvg;
+        sourceModel = '参考归一化 · 整单提交方形母版';
+      } else if (generationContext.family?.presetSvg) {
         generatedText = generationContext.family.presetSvg;
         sourceModel = referenceImageBase64
           ? `参考归一化 · ${generationContext.family.label}`
