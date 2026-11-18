@@ -1,20 +1,433 @@
-export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.09';
+import type { TDesignIcon } from './tdesign-icons';
+
+export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.10';
+
+export type TDesignGenerationReference = Pick<TDesignIcon, 'name' | 'label' | 'keywords' | 'viewBox' | 'body'> & {
+  source: 'TDesign Icons official';
+};
+
+type TDesignGenerationFamily = {
+  id: string;
+  label: string;
+  source: string;
+  keyline: string;
+  masterRule: string;
+  stateRule: string;
+  stroke2Role?: 'core-detail' | 'state-symbol';
+  presetSvg?: string;
+  geometry?: {
+    stroke1: { x: number; y: number; width: number; height: number };
+    stroke2Center?: { x: number; y: number; tolerance: number };
+    stroke2MaxSize?: { width: number; height: number };
+    minimumLayerGap?: number;
+  };
+};
+
+export type TDesignGenerationContext = {
+  family?: TDesignGenerationFamily;
+  references: readonly TDesignGenerationReference[];
+  stroke2Role: 'core-detail' | 'state-symbol';
+};
 
 type GenerationPromptOptions = {
   concept: string;
   hasReferenceImage: boolean;
+  cornerRadius: number;
+  context?: TDesignGenerationContext;
 };
 
-export const buildTDesignGenerationPrompt = ({ concept, hasReferenceImage }: GenerationPromptOptions) => {
+const normalizeSemanticText = (value: string) => value
+  .toLowerCase()
+  .replace(/[\s\p{P}\p{S}]+/gu, '');
+
+const getWarehouseStateRule = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  if (/出入库|入出库|库存流转|双向/.test(normalized)) {
+    return 'Use one centered horizontal bidirectional arrow in stroke2: left and right arrowheads on the same axis. Do not add boxes, doors, shelves, or a second container.';
+  }
+  if (/出库|出仓|发货|领料/.test(normalized)) {
+    return 'Use one centered upward arrow in stroke2 to mean leaving stock. Keep it fully inside the warehouse shell with a 1.5–2.5 unit visible gap from stroke1.';
+  }
+  if (/入库|入仓|收货|上架/.test(normalized)) {
+    return 'Use one centered downward arrow in stroke2 to mean entering stock. Keep it fully inside the warehouse shell with a 1.5–2.5 unit visible gap from stroke1.';
+  }
+  return 'Draw no state symbol unless the concept explicitly requires one. Do not add shelves, windows, doors, boxes, or decorative divisions.';
+};
+
+const getFileSecurityStateRule = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  if (/解密|解锁|未锁/.test(normalized)) {
+    return 'Use one open padlock in stroke2, centered in the lower half. The shackle must be visibly open and must not touch the document outline.';
+  }
+  return 'Use one closed padlock in stroke2, centered in the lower half. Keep the shackle and lock body simple, symmetric, and visibly separated from the document outline.';
+};
+
+const getFileSecurityPresetSvg = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  const shacklePath = /解密|解锁|未锁/.test(normalized)
+    ? 'M12.5 20.5V18.5C12.5 16.8 13.9 15.5 15.5 15.5H16.5C17.7 15.5 18.8 16.2 19.3 17.2'
+    : 'M12.5 20.5V18.5C12.5 16.8 13.9 15.5 15.5 15.5H16.5C18.1 15.5 19.5 16.8 19.5 18.5V20.5';
+
+  return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M5 3H18L27 12V29H5Z M18 3V12H27" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+<g id="stroke2">
+<path d="${shacklePath} M11 20.5H21V25H11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`;
+};
+
+const getPackageStateRule = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  if (/发货|寄件|寄出|派送/.test(normalized)) {
+    return 'Use one rightward arrow in stroke2 to mean shipment. Keep it optically centered against the package body, preserve clear separation from stroke1, and do not replace the package with an export window or share symbol.';
+  }
+  if (/拆箱|取出|出箱|包裹出库/.test(normalized)) {
+    return 'Use one upward arrow in stroke2, centered over the box interior, to show removal. Do not change the box master.';
+  }
+  return 'Use one downward arrow in stroke2, centered over the box interior, to show insertion. Do not change the box master.';
+};
+
+const getWarehousePresetSvg = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  const statePath = /出库|出仓|发货|领料/.test(normalized)
+    ? 'M16 20V8.5M12.5 12L16 8.5L19.5 12'
+    : /入库|入仓|收货|上架/.test(normalized)
+      ? 'M16 8.5V20M12.5 16.5L16 20L19.5 16.5'
+      : null;
+  if (!statePath) return undefined;
+
+  return `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M4 28V12L16 4L28 12V28H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+<g id="stroke2">
+<path d="${statePath}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`;
+};
+
+const qualityRejectionPresetSvg = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M4 9L16 3L28 9V24L16 29L4 24V9ZM4 9L16 15L28 9M16 15V29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+<g id="stroke2">
+<path d="M7.5 17.5L11.5 21.5M11.5 17.5L7.5 21.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`;
+
+const auditReviewPresetSvg = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M4 3H23V13 M15.5 27H4V3 M7 8H19 M7 12H19 M7 16H15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+<g id="stroke2">
+<path d="M23 16.5A4.5 4.5 0 1 1 23 25.5A4.5 4.5 0 1 1 23 16.5Z M26.2 24.2L30 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`;
+
+const orderClipboardPresetSvg = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M11 6H5V29H27V6H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+<path d="M11 3H21V9H11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`;
+
+const resolveGenerationFamily = (concept: string): TDesignGenerationFamily | undefined => {
+  const normalized = normalizeSemanticText(concept);
+
+  if (normalized === '订单') {
+    return {
+      id: 'order-clipboard',
+      label: '订单夹板家族',
+      source: 'User-provided clipboard topology, normalized for TDesign v2',
+      keyline: 'vertical 22×26, centered at x=5..27 and y=3..29',
+      masterRule: 'Use one upright clipboard body with one centered foreground tab. The body top edge must be split into left and right segments that stop at the tab sides; no hidden top edge may pass through the tab.',
+      stateRule: 'Keep both the body and tab in stroke1 because they form one outer object. Store all adjustable corners as sharp vertices so the page corner-radius control is the only source of rounding.',
+      presetSvg: orderClipboardPresetSvg,
+      geometry: {
+        stroke1: { x: 5, y: 3, width: 22, height: 26 }
+      }
+    };
+  }
+
+  if (/^(分配|派发|调拨|调配|资源分配|库存分配|物料分配|订单分配)$/.test(normalized)) {
+    return {
+      id: 'allocation-flow',
+      label: '分配流转家族',
+      source: 'TDesign arrow-left-right-circle topology, redrawn for the TDesign v2 circular keyline',
+      keyline: 'circular 28×28, centered at x=2..30 and y=2..30',
+      masterRule: 'The circular master is locked. In stroke1 use one exact 28×28 circle centered at (16,16), spanning x=2..30 and y=2..30.',
+      stateRule: 'Use two compact opposing horizontal arrows in stroke2. Their combined geometric center must be exactly (16,16), with balanced top and bottom spacing and generous clearance from the circle.',
+      presetSvg: `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M16 2A14 14 0 1 1 16 30A14 14 0 1 1 16 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+<g id="stroke2">
+<path d="M20.5 13H11.5M14 10.5L11.5 13L14 15.5M11.5 19H20.5M18 16.5L20.5 19L18 21.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`,
+      geometry: {
+        stroke1: { x: 2, y: 2, width: 28, height: 28 },
+        stroke2Center: { x: 16, y: 16, tolerance: 0.01 },
+        stroke2MaxSize: { width: 10, height: 12 }
+      }
+    };
+  }
+
+  if (normalized === '审核') {
+    return {
+      id: 'audit-review',
+      label: 'Iconfont 审核母版 #3875045',
+      source: 'Iconfont exact-name collection-priority result “审核” #3875045, redrawn for TDesign v2',
+      keyline: 'special document-and-magnifier composite, spanning x=4..29 and y=3..28',
+      masterRule: 'Preserve the reference topology: one upright audit document with short review lines, overlapped by one magnifying glass at the lower right. Do not replace the magnifying glass with a check mark, checkbox, stamp, person, shield, or plain framed tick.',
+      stateRule: 'The magnifying glass is an intentional foreground object from the Iconfont reference, not a detached status mark. Keep its circular lens and diagonal handle together in stroke2. Express the overlap by breaking the covered right and bottom document edges; visible stroke1 and stroke2 lines must never cross or touch.',
+      presetSvg: auditReviewPresetSvg,
+      geometry: {
+        stroke1: { x: 4, y: 3, width: 19, height: 24 },
+        stroke2MaxSize: { width: 11.5, height: 11.5 },
+        minimumLayerGap: 3.5
+      }
+    };
+  }
+
+  if (/文件加密|加密文件|文件锁定|锁定文件|文件安全|安全文件|文件解密|解密文件|文件解锁|解锁文件/.test(normalized)) {
+    return {
+      id: 'document-security',
+      label: '文件安全家族',
+      source: 'TDesign file-locked / file-unlocked family',
+      keyline: 'vertical 22×26, centered at x=5..27 and y=3..29',
+      masterRule: 'The document master is locked. In stroke1 use exactly this topology and proportion: M5 3H18L27 12V29H5Z M18 3V12H27. Do not redesign the page silhouette or add text lines.',
+      stateRule: `${getFileSecurityStateRule(concept)} The complete lock is fixed at x=11..21 and y=15.5..25; its bottom centerline must remain 4 units above the document bottom at y=29.`,
+      presetSvg: getFileSecurityPresetSvg(concept),
+      geometry: {
+        stroke1: { x: 5, y: 3, width: 22, height: 26 },
+        stroke2Center: { x: 16, y: 20.25, tolerance: 0.01 },
+        stroke2MaxSize: { width: 10, height: 9.5 }
+      }
+    };
+  }
+
+  if (normalized === '发货') {
+    return {
+      id: 'shipping-dispatch',
+      label: 'Iconfont 发货母版 #11239023',
+      source: 'Iconfont exact-name collection-priority result “发货” #11239023, redrawn for TDesign v2',
+      keyline: 'horizontal 26×22, centered at x=3..29 and y=5..27',
+      masterRule: 'Use the locked front-facing shipment package: one horizontal package outline, one top closure seam, and one centered hanging seal with a V-shaped lower notch. Do not replace it with an isometric cube, truck, share window, export arrow, or tiny arrow inside a box.',
+      stateRule: 'The centered seal is part of the package structure and remains in stroke1. Do not add a separate stroke2 arrow or status mark.',
+      presetSvg: `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="stroke1">
+<path d="M3 5H29V27H3Z M3 9H29 M12 9V18L16 15.5L20 18V9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+</g>
+</svg>`,
+      geometry: {
+        stroke1: { x: 3, y: 5, width: 26, height: 22 }
+      }
+    };
+  }
+
+  if (/^(不合格处理|不合格品|不良品处理|异常品处理|不合格品处理)$/.test(normalized)) {
+    return {
+      id: 'quality-rejection',
+      label: '质量异常处理家族',
+      source: 'Package status topology normalized for TDesign v2',
+      keyline: 'special 24×26 package body, centered at x=4..28 and y=3..29',
+      masterRule: 'Use the locked isometric package master in stroke1. Keep the three faces and center seam unchanged.',
+      stateRule: 'Use one compact 4×4 rejection cross on the left face in stroke2. Its exact bounding box is x=7.5..11.5 and y=17.5..21.5 so every visible edge keeps the required safety gap.',
+      presetSvg: qualityRejectionPresetSvg,
+      geometry: {
+        stroke1: { x: 4, y: 3, width: 24, height: 26 },
+        stroke2Center: { x: 9.5, y: 19.5, tolerance: 0.01 },
+        stroke2MaxSize: { width: 4, height: 4 }
+      }
+    };
+  }
+
+  if (/出入库|入出库|入库|出库|入仓|出仓|库存流转|仓储流转|收货入库|发货出库/.test(normalized)) {
+    return {
+      id: 'warehouse-flow',
+      label: '仓储流转家族',
+      source: 'Tabler package-import / package-export topology, redrawn for TDesign v2',
+      keyline: 'square 24×24, centered at x=4..28 and y=4..28',
+      masterRule: 'The warehouse master is locked. In stroke1 use exactly this single shell path: M4 28V12L16 4L28 12V28H4Z. Do not redesign the roof, open a side, or replace the warehouse with a tray, house, box, or download symbol.',
+      stateRule: getWarehouseStateRule(concept),
+      presetSvg: getWarehousePresetSvg(concept),
+      geometry: {
+        stroke1: { x: 4, y: 4, width: 24, height: 24 },
+        stroke2MaxSize: { width: 7, height: 11.5 }
+      }
+    };
+  }
+
+  if (/打包|装箱|入箱|拆箱|开箱|出箱|包裹入库|包裹出库/.test(normalized)) {
+    return {
+      id: 'package-flow',
+      label: '包裹流转家族',
+      source: 'Tabler package-import / package-export topology, redrawn for TDesign v2',
+      keyline: 'square 24×24, centered at x=4..28 and y=4..28',
+      masterRule: 'The package master is locked. In stroke1 use exactly this topology: M16 28L4 21.5V10.5L16 4L28 10.5V21.5L16 28 M4 10.5L16 17L28 10.5 M16 17V28. Keep all box perspective lines in stroke1 and do not add tape or labels.',
+      stateRule: getPackageStateRule(concept),
+      stroke2Role: 'state-symbol'
+    };
+  }
+
+  return undefined;
+};
+
+const semanticExpansions = [
+  { when: /分配|派发|调拨|调配/, terms: ['arrow-left-right-circle', 'swap', '交换', '左右箭头循环'] },
+  { when: /加密|锁定|安全/, terms: ['locked', 'lock', '锁定', '安全'] },
+  { when: /解密|解锁/, terms: ['unlocked', 'unlock', '解锁'] },
+  { when: /入库|入仓|收货/, terms: ['import', '导入', 'download', '下载'] },
+  { when: /出库|出仓/, terms: ['export', '导出', 'upload', '上传'] },
+  { when: /发货|寄件|寄出|派送/, terms: ['shipment', 'shipping', 'delivery', 'package', 'truck', '发货', '物流', '运输'] },
+  { when: /文件|文档/, terms: ['file', 'document', '文件', '文档'] },
+  { when: /仓库|仓储|库存/, terms: ['store', 'warehouse', 'institution', '仓库', '库存'] },
+  { when: /设置|配置/, terms: ['setting', 'settings', '设置', '配置'] },
+  { when: /搜索|查找/, terms: ['search', '搜索', '查找'] },
+  { when: /用户|人员/, terms: ['user', '用户', '人员'] }
+] as const;
+
+const buildSemanticTerms = (concept: string) => {
+  const normalized = normalizeSemanticText(concept);
+  const terms = new Set([normalized]);
+  semanticExpansions.forEach(({ when, terms: relatedTerms }) => {
+    if (when.test(normalized)) relatedTerms.forEach((term) => terms.add(normalizeSemanticText(term)));
+  });
+  return [...terms].filter(Boolean);
+};
+
+const scoreReferenceIcon = (icon: TDesignIcon, concept: string, semanticTerms: readonly string[]) => {
+  const normalizedConcept = normalizeSemanticText(concept);
+  const iconTerms = [icon.name, icon.label, ...icon.keywords]
+    .map(normalizeSemanticText)
+    .filter(Boolean);
+  let score = 0;
+
+  iconTerms.forEach((iconTerm) => {
+    if (iconTerm === normalizedConcept) score = Math.max(score, 120);
+    if (normalizedConcept.length >= 2 && normalizedConcept.includes(iconTerm) && iconTerm.length >= 2) {
+      score = Math.max(score, 55 + iconTerm.length);
+    }
+    if (iconTerm.length >= 2 && iconTerm.includes(normalizedConcept) && normalizedConcept.length >= 2) {
+      score = Math.max(score, 50 + normalizedConcept.length);
+    }
+    semanticTerms.forEach((semanticTerm) => {
+      if (iconTerm === semanticTerm) score = Math.max(score, semanticTerm === normalizedConcept ? 120 : 46);
+      if (semanticTerm.length >= 2 && iconTerm.includes(semanticTerm)) {
+        score = Math.max(score, 32 + semanticTerm.length);
+      }
+    });
+  });
+
+  return score;
+};
+
+export const resolveTDesignGenerationContext = (
+  concept: string,
+  icons: readonly TDesignIcon[]
+): TDesignGenerationContext => {
+  const family = resolveGenerationFamily(concept);
+  const normalizedConcept = normalizeSemanticText(concept);
+  const isShipmentConcept = /发货|寄件|寄出|派送/.test(normalizedConcept);
+  const semanticTerms = buildSemanticTerms(concept);
+  const preferredNames = family?.id === 'document-security'
+    ? new Set(['file-locked', 'file-unlocked'])
+    : family?.id === 'warehouse-flow'
+      ? new Set(['institution', 'store'])
+      : family?.id === 'package-flow'
+        ? new Set(['inbox', 'outbox'])
+        : family?.id === 'allocation-flow'
+          ? new Set(['arrow-left-right-circle', 'swap'])
+        : new Set<string>();
+
+  const excludedNames = family?.id === 'package-flow' || family?.id === 'warehouse-flow' || isShipmentConcept
+    ? new Set(['export', 'import', 'jump', 'jump-double', 'share', 'share-1', 'forward'])
+    : new Set<string>();
+
+  const references = icons
+    .map((icon) => ({
+      icon,
+      score: scoreReferenceIcon(icon, concept, semanticTerms) + (preferredNames.has(icon.name) ? 80 : 0)
+    }))
+    .filter(({ icon }) => !excludedNames.has(icon.name))
+    .filter(({ score }) => score >= 38)
+    .sort((left, right) => right.score - left.score || left.icon.name.localeCompare(right.icon.name))
+    .slice(0, family ? 3 : 2)
+    .map(({ icon }): TDesignGenerationReference => ({
+      name: icon.name,
+      label: icon.label,
+      keywords: icon.keywords,
+      viewBox: icon.viewBox,
+      body: icon.body,
+      source: 'TDesign Icons official'
+    }));
+
+  return {
+    family,
+    references,
+    stroke2Role: family?.stroke2Role ?? 'core-detail'
+  };
+};
+
+const formatGenerationContext = (context?: TDesignGenerationContext) => {
+  if (!context) return 'No approved reference was found. Use only the simplest universal metaphor and keep the topology minimal.';
+
+  const familySection = context.family
+    ? `FAMILY MASTER — mandatory and higher priority than all other references
+- Family: ${context.family.label} (${context.family.id})
+- Reference basis: ${context.family.source}
+- Keyline: ${context.family.keyline}
+- Locked master: ${context.family.masterRule}
+- State variant: ${context.family.stateRule}
+- stroke2 semantic role: ${context.stroke2Role === 'state-symbol' ? 'detached state symbol' : 'core semantic detail'}
+- The locked stroke1 master must remain identical across every icon in this family. Only stroke2 may vary by state.`
+    : `No locked product-family master matched this concept.
+- stroke2 semantic role: core semantic detail unless an approved family explicitly classifies it as a detached state symbol.`;
+
+  const referenceSection = context.references.length
+    ? context.references.map((reference, index) => `REFERENCE ${index + 1} — ${reference.source}
+- Name: ${reference.name}
+- Label: ${reference.label}
+- Source viewBox: ${reference.viewBox}
+- Source SVG body (topology reference only):
+${reference.body}`).join('\n\n')
+    : 'No same-semantic TDesign reference matched.';
+
+  return `${familySection}
+
+APPROVED SEMANTIC REFERENCES — ordered by relevance
+${referenceSection}
+
+Use references only to determine the metaphor, object relationships, openings, direction, and state placement. Redraw them on the 32×32 TDesign v2 master; do not copy their source coordinates, fill treatment, rounded style, or element IDs. If references conflict with a locked family master, the locked family master wins.`;
+};
+
+export const buildTDesignGenerationPrompt = ({
+  concept,
+  hasReferenceImage,
+  cornerRadius,
+  context
+}: GenerationPromptOptions) => {
   const sourceRule = hasReferenceImage
-    ? 'The attached image is the structural source of truth. Preserve its object count, silhouette, openings, directions, overlaps, connection points, internal symbols, and aspect ratio.'
-    : `Use the simplest unambiguous topology for the concept "${concept}". Do not invent decorative details.`;
+    ? 'Use the attached image only as the semantic and topology reference. Preserve its object count, silhouette type, openings, directions, foreground/background order, overlaps, connection points, and internal-symbol meaning, but normalize all coordinates, scale, spacing, and visual centering to the TDesign v2 drawing system below. Do not preserve an off-spec source size, source padding, source alignment, stroke styling, or corner radius.'
+    : `Use the approved reference context below before drawing. Do not invent a new metaphor when a family master or same-semantic reference exists.`;
+
+  const referenceContext = hasReferenceImage
+    ? `${formatGenerationContext(context)}
+
+The user-provided image has priority for semantic topology, but it never overrides the 32×32 artboard, the selected TDesign v2 keyline, a locked family master, geometric centering, layer separation, or required optical spacing.`
+    : formatGenerationContext(context);
 
   return `You are an SVG icon engineer. Create one editable outline icon following ${TDESIGN_GENERATION_STANDARD_VERSION}.
 
 SEMANTIC INPUT
 - Concept: "${concept}"
 - ${sourceRule}
+
+REFERENCE CONTEXT
+${referenceContext}
 
 DRAWING SYSTEM
 - Use an exact 32×32 artboard with viewBox="0 0 32 32".
@@ -24,6 +437,7 @@ DRAWING SYSTEM
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
 - Use editable centerline paths, not expanded or filled stroke silhouettes.
 - Use square line caps and hard ordinary corners. Curves must be explicit path geometry.
+- The editable source master must keep every user-adjustable exterior corner sharp. The page currently applies a ${cornerRadius}-unit corner radius to stroke1 after generation; do not bake that radius or any reference-image corner radius into the SVG path. Use A/C/S/Q/T curves only for intrinsic semantic curves such as true circles, lenses, wheels, or organic contours, never merely to imitate rounded corners from the reference image.
 - Compound-icon gaps should normally be 0.5-unit increments and no wider than 2.5 units.
 - Use exactly one primary metaphor and at most one state modifier. Do not draw one element for every word in the concept.
 - Omit tape, folds, dividers, labels, texture, and construction detail unless removing it would change the core meaning.
@@ -34,7 +448,12 @@ SEMANTIC LAYERS
 - Put every external silhouette and outer structural line in one <g id="stroke1">.
 - Put internal symbols, holes, dividers, letters, dots, status marks, and decorative details in one optional <g id="stroke2">.
 - Internal details must be separate from stroke1 so global corner editing can affect only the exterior.
+- Size and position the complete stroke2 bounding box inside the subject's effective interior cavity, excluding roofs, perspective faces, openings, seams, and corners. By default, neither stroke2 dimension may exceed 50% of the corresponding stroke1 dimension unless a locked family rule explicitly says otherwise.
+- Geometrically center the complete state symbol first, including the arrowhead, wings, and shaft or both strokes of a cross. Only then apply at most a 0.5-unit optical correction. Never center only the shaft, one diagonal, or the path start point.
 - Unless a semantic connection is explicit, stroke2 symbols must not intersect or touch stroke1. At the default 2-unit stroke, keep a visible 1.5–2.5-unit gap (normally 3.5–4.5 units between centerlines), using 0.5-unit increments.
+- Measure the layer gap as the true two-dimensional shortest distance across every segment, endpoint, and curve, including diagonal-to-diagonal distances. Any centerline gap below 3.5 units is invalid even when the two bounding boxes do not overlap.
+- Preserve foreground/background order with explicit path breaks. Whenever a foreground object overlaps a background outline, stop the covered background segments before the foreground boundary and resume them after it. Never draw a closed background outline and let its hidden edge pass through the middle of the foreground object; do not simulate occlusion with white fills, masks, or clipping.
+- Before answering, inspect every overlap at centerline level: no supposedly hidden background segment may remain visible inside or across the foreground object's silhouette.
 - Use one or more <path> elements inside those groups. Multiple disconnected subpaths are allowed.
 - Each path must use fill="none", stroke="currentColor", stroke-width="2", and stroke-linecap="square".
 - Use absolute path commands only: M L H V C S Q T A Z. Do not use transforms.
@@ -43,7 +462,7 @@ OUTPUT CONTRACT
 - Return only one complete SVG element: <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">...</svg>.
 - The SVG may contain only stroke1 and optional stroke2 groups, containing path elements only.
 - Do not output Markdown, prose, comments, style, class, script, defs, clipPath, mask, text, raster images, or external references.
-- Verify before answering: correct semantic topology; all geometry inside 0..32; stable stroke1/stroke2 separation; no filled silhouette; no omitted or invented object.`;
+- Verify before answering: correct semantic topology; every overlap uses a real background-path break; adjustable exterior corners are sharp source vertices; all geometry inside 0..32; stable stroke1/stroke2 separation; no filled silhouette; no omitted or invented object.`;
 };
 
 type ValidationResult =
@@ -56,7 +475,76 @@ const escapeAttribute = (value: string) => value
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;');
 
-export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
+type MeasuredBox = { x: number; y: number; width: number; height: number };
+type MeasuredPoint = { x: number; y: number };
+
+const MIN_LAYER_CENTERLINE_GAP = 3.5;
+const PATH_SAMPLE_STEP = 0.25;
+const REQUIRED_PATH_ATTRIBUTES = {
+  fill: 'none',
+  stroke: 'currentColor',
+  'stroke-width': '2',
+  'stroke-linecap': 'square',
+  'stroke-linejoin': 'miter'
+} as const;
+const OPTIONAL_PATH_ATTRIBUTES = new Set(['stroke-miterlimit']);
+const PATH_PRESENTATION_ATTRIBUTES = new Set([
+  ...Object.keys(REQUIRED_PATH_ATTRIBUTES),
+  ...OPTIONAL_PATH_ATTRIBUTES
+]);
+
+const validateInheritedPathAttribute = (name: string, value: string) => {
+  if (name in REQUIRED_PATH_ATTRIBUTES) {
+    const expected = REQUIRED_PATH_ATTRIBUTES[name as keyof typeof REQUIRED_PATH_ATTRIBUTES];
+    return value === expected ? null : `${name} 必须为 ${expected}`;
+  }
+  if (name === 'stroke-miterlimit') {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0
+      ? null
+      : 'stroke-miterlimit 必须为正数';
+  }
+  return `${name} 不是允许的描边属性`;
+};
+
+const mergeMeasuredBoxes = (left: MeasuredBox | undefined, right: MeasuredBox): MeasuredBox => {
+  if (!left) return right;
+  const x = Math.min(left.x, right.x);
+  const y = Math.min(left.y, right.y);
+  const rightEdge = Math.max(left.x + left.width, right.x + right.width);
+  const bottomEdge = Math.max(left.y + left.height, right.y + right.height);
+  return { x, y, width: rightEdge - x, height: bottomEdge - y };
+};
+
+const samplePathPoints = (path: SVGPathElement): MeasuredPoint[] => {
+  const length = path.getTotalLength();
+  if (!Number.isFinite(length)) return [];
+  const sampleCount = Math.max(1, Math.ceil(length / PATH_SAMPLE_STEP));
+  const points: MeasuredPoint[] = [];
+  for (let index = 0; index <= sampleCount; index += 1) {
+    const point = path.getPointAtLength((length * index) / sampleCount);
+    points.push({ x: point.x, y: point.y });
+  }
+  return points;
+};
+
+const getMinimumPointDistance = (left: readonly MeasuredPoint[], right: readonly MeasuredPoint[]) => {
+  let minimumSquared = Number.POSITIVE_INFINITY;
+  for (const leftPoint of left) {
+    for (const rightPoint of right) {
+      const deltaX = leftPoint.x - rightPoint.x;
+      const deltaY = leftPoint.y - rightPoint.y;
+      const distanceSquared = deltaX * deltaX + deltaY * deltaY;
+      if (distanceSquared < minimumSquared) minimumSquared = distanceSquared;
+    }
+  }
+  return Math.sqrt(minimumSquared);
+};
+
+export const validateTDesignGeneratedIcon = (
+  raw: string,
+  context?: TDesignGenerationContext
+): ValidationResult => {
   const candidate = raw
     .replace(/^```(?:svg|xml)?\s*/i, '')
     .replace(/\s*```$/i, '')
@@ -72,10 +560,14 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
   const viewBox = root.getAttribute('viewBox')?.trim().replace(/\s+/g, ' ');
   if (viewBox !== '0 0 32 32') return { ok: false, reason: '画板必须是 0 0 32 32' };
 
-  const allowedRootAttributes = new Set(['viewBox', 'fill', 'xmlns']);
+  const allowedRootAttributes = new Set(['viewBox', 'xmlns', ...PATH_PRESENTATION_ATTRIBUTES]);
   for (const attribute of Array.from(root.attributes)) {
     if (!allowedRootAttributes.has(attribute.name)) {
       return { ok: false, reason: `svg 不允许 ${attribute.name} 属性` };
+    }
+    if (PATH_PRESENTATION_ATTRIBUTES.has(attribute.name)) {
+      const reason = validateInheritedPathAttribute(attribute.name, attribute.value);
+      if (reason) return { ok: false, reason: `svg 的 ${reason}` };
     }
   }
 
@@ -93,7 +585,18 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
     if (id !== 'stroke1' && id !== 'stroke2') return { ok: false, reason: '图层 ID 只能是 stroke1 或 stroke2' };
     if (groupIds.has(id)) return { ok: false, reason: `图层 ${id} 重复` };
     groupIds.add(id);
-    if (group.attributes.length !== 1) return { ok: false, reason: `${id} 图层不能包含额外属性` };
+
+    const inheritedAttributes = new Map<string, string>();
+    for (const attribute of Array.from(group.attributes)) {
+      if (attribute.name === 'id') continue;
+      if (!PATH_PRESENTATION_ATTRIBUTES.has(attribute.name)) {
+        return { ok: false, reason: `${id} 图层不允许 ${attribute.name} 属性` };
+      }
+      const reason = validateInheritedPathAttribute(attribute.name, attribute.value);
+      if (reason) return { ok: false, reason: `${id} 图层的 ${reason}` };
+      inheritedAttributes.set(attribute.name, attribute.value);
+      group.removeAttribute(attribute.name);
+    }
 
     const paths = Array.from(group.children);
     if (paths.length === 0) return { ok: false, reason: `${id} 图层不能为空` };
@@ -104,6 +607,17 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
       const allowedPathAttributes = new Set([
         'd', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit'
       ]);
+
+      Object.entries(REQUIRED_PATH_ATTRIBUTES).forEach(([name, defaultValue]) => {
+        if (!path.hasAttribute(name)) {
+          path.setAttribute(name, inheritedAttributes.get(name) || root.getAttribute(name) || defaultValue);
+        }
+      });
+      const inheritedMiterLimit = inheritedAttributes.get('stroke-miterlimit') || root.getAttribute('stroke-miterlimit');
+      if (!path.hasAttribute('stroke-miterlimit') && inheritedMiterLimit) {
+        path.setAttribute('stroke-miterlimit', inheritedMiterLimit);
+      }
+
       for (const attribute of Array.from(path.attributes)) {
         if (!allowedPathAttributes.has(attribute.name)) {
           return { ok: false, reason: `path 不允许 ${attribute.name} 属性` };
@@ -119,8 +633,15 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
       if (!commands.length || commands.some((command) => !'MLHVCSQTAZ'.includes(command))) {
         return { ok: false, reason: '路径包含不支持的命令' };
       }
-      if (path.getAttribute('fill') !== 'none') return { ok: false, reason: '生成路径必须使用 fill="none"' };
-      if (path.getAttribute('stroke') !== 'currentColor') return { ok: false, reason: '生成路径必须使用 currentColor 描边' };
+      for (const [name, expected] of Object.entries(REQUIRED_PATH_ATTRIBUTES)) {
+        if (path.getAttribute(name) !== expected) {
+          return { ok: false, reason: `生成路径的 ${name} 必须为 ${expected}` };
+        }
+      }
+      if (path.hasAttribute('stroke-miterlimit')) {
+        const reason = validateInheritedPathAttribute('stroke-miterlimit', path.getAttribute('stroke-miterlimit') || '');
+        if (reason) return { ok: false, reason: `生成路径的 ${reason}` };
+      }
     }
   }
   if (!groupIds.has('stroke1')) return { ok: false, reason: '缺少外轮廓 stroke1 图层' };
@@ -129,6 +650,8 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
   measurementSvg.setAttribute('viewBox', '0 0 32 32');
   measurementSvg.style.cssText = 'position:fixed;left:-10000px;top:-10000px;width:32px;height:32px;visibility:hidden';
   document.body.appendChild(measurementSvg);
+  const measuredGroups = new Map<string, MeasuredBox>();
+  const measuredPaths = new Map<string, SVGPathElement[]>();
   try {
     for (const sourcePath of Array.from(root.querySelectorAll('path'))) {
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -142,7 +665,89 @@ export const validateTDesignGeneratedIcon = (raw: string): ValidationResult => {
       if (box.x < -tolerance || box.y < -tolerance || box.x + box.width > 32 + tolerance || box.y + box.height > 32 + tolerance) {
         return { ok: false, reason: '路径超出 32×32 画板' };
       }
-      path.remove();
+      const groupId = sourcePath.parentElement?.getAttribute('id') || '';
+      measuredGroups.set(groupId, mergeMeasuredBoxes(measuredGroups.get(groupId), {
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height
+      }));
+      measuredPaths.set(groupId, [...(measuredPaths.get(groupId) || []), path]);
+    }
+
+    const geometry = context?.family?.geometry;
+    const stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
+    const stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
+    // Historical localStorage entries are revalidated without generation context.
+    // Preserve those records as-is; enforce the stricter inter-layer gap on every
+    // newly generated icon, which always supplies its resolved context.
+    if (context && stroke1Points.length && stroke2Points.length) {
+      const minimumLayerGap = getMinimumPointDistance(stroke1Points, stroke2Points);
+      const requiredLayerGap = geometry?.minimumLayerGap ?? MIN_LAYER_CENTERLINE_GAP;
+      if (minimumLayerGap < requiredLayerGap - 0.05) {
+        return {
+          ok: false,
+          reason: `stroke1 与 stroke2 的中心线最短距离仅 ${minimumLayerGap.toFixed(2)}，必须至少为 ${requiredLayerGap}`
+        };
+      }
+    }
+
+    const stroke1Box = measuredGroups.get('stroke1');
+    const stroke2Box = measuredGroups.get('stroke2');
+    if (
+      context?.stroke2Role === 'state-symbol'
+      && stroke1Box
+      && stroke2Box
+      && !geometry?.stroke2MaxSize
+    ) {
+      const defaultMaximumWidth = stroke1Box.width * 0.5;
+      const defaultMaximumHeight = stroke1Box.height * 0.5;
+      const tolerance = 0.05;
+      if (
+        stroke2Box.width > defaultMaximumWidth + tolerance
+        || stroke2Box.height > defaultMaximumHeight + tolerance
+      ) {
+        return {
+          ok: false,
+          reason: `stroke2 状态图形过大，默认不得超过主体对应尺寸的 50%（当前上限 ${defaultMaximumWidth.toFixed(1)}×${defaultMaximumHeight.toFixed(1)}）`
+        };
+      }
+    }
+
+    if (geometry) {
+      const familyLabel = context?.family?.label || '当前图标家族';
+      const expected = geometry.stroke1;
+      const tolerance = 0.05;
+      if (!stroke1Box || [
+        Math.abs(stroke1Box.x - expected.x),
+        Math.abs(stroke1Box.y - expected.y),
+        Math.abs(stroke1Box.width - expected.width),
+        Math.abs(stroke1Box.height - expected.height)
+      ].some((difference) => difference > tolerance)) {
+        return {
+          ok: false,
+          reason: `${familyLabel}的 stroke1 必须符合 ${expected.width}×${expected.height} Keyline，并保持画板居中`
+        };
+      }
+      if (geometry.stroke2Center) {
+        if (!stroke2Box) return { ok: false, reason: `${familyLabel}缺少规定的 stroke2 状态图形` };
+        const centerX = stroke2Box.x + stroke2Box.width / 2;
+        const centerY = stroke2Box.y + stroke2Box.height / 2;
+        if (
+          Math.abs(centerX - geometry.stroke2Center.x) > geometry.stroke2Center.tolerance
+          || Math.abs(centerY - geometry.stroke2Center.y) > geometry.stroke2Center.tolerance
+        ) {
+          return { ok: false, reason: `${familyLabel}的 stroke2 未与外轮廓几何居中` };
+        }
+      }
+      if (
+        stroke2Box
+        && geometry.stroke2MaxSize
+        && (stroke2Box.width > geometry.stroke2MaxSize.width + tolerance
+          || stroke2Box.height > geometry.stroke2MaxSize.height + tolerance)
+      ) {
+        return { ok: false, reason: `${familyLabel}的内部图形过大，未保留规定留白` };
+      }
     }
   } catch {
     return { ok: false, reason: '路径数据无法解析' };

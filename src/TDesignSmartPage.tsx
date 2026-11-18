@@ -20,6 +20,7 @@ import { tdesignSmartIcons } from './tdesign-smart-icons';
 import { serializeTDesignIcon, type TDesignIcon } from './tdesign-icons';
 import {
   buildTDesignGenerationPrompt,
+  resolveTDesignGenerationContext,
   TDESIGN_GENERATION_STANDARD_VERSION,
   validateTDesignGeneratedIcon
 } from './tdesign-generation';
@@ -51,6 +52,7 @@ type ImportedCategory = keyof typeof importedCategories;
 const categories = Object.keys(importedCategories) as ImportedCategory[];
 const importedIconCount = Object.values(importedCategories)
   .reduce((total, icons) => total + icons.length, 0);
+const generationReferenceIcons: readonly TDesignIcon[] = Object.values(importedCategories).flat();
 const generatedCategory = '我的生成' as const;
 type ActiveCategory = ImportedCategory | typeof generatedCategory;
 
@@ -85,12 +87,12 @@ const simulatedWarehouseOutIcon: GeneratedTDesignIcon = {
   keywords: ['出库', '仓库', '库存', '向外', '模拟生成'],
   viewBox: '0 0 32 32',
   body: `<g id="stroke1">
-<path d="M4 28H13M4 28V12L16 4L28 12V14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+<path d="M4 28V12L16 4L28 12V28H4Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
 </g>
 <g id="stroke2">
-<path d="M17 22H29M24.5 17.5L29 22L24.5 26.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+<path d="M16 20V8.5M12.5 12L16 8.5L19.5 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
 </g>`,
-  sourceModel: '对话模拟',
+  sourceModel: '固定母版 · 仓储流转家族',
   standardVersion: TDESIGN_GENERATION_STANDARD_VERSION
 };
 
@@ -132,13 +134,12 @@ const simulatedNonconformanceIcon: GeneratedTDesignIcon = {
   keywords: ['不合格处理', '异常处理', '质量', '退回', '模拟生成'],
   viewBox: '0 0 32 32',
   body: `<g id="stroke1">
-<path d="M11 5H7L5 7V29H27V7L25 5H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
-<path data-corner-fixed="true" d="M11 5V3H21V5H11Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+<path d="M4 9L16 3L28 9V24L16 29L4 24V9ZM4 9L16 15L28 9M16 15V29" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
 </g>
 <g id="stroke2">
-<path d="M11 12L21 22M21 12L11 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+<path d="M7.5 17.5L11.5 21.5M11.5 17.5L7.5 21.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
 </g>`,
-  sourceModel: '参考重绘 · Tabler clipboard-x',
+  sourceModel: '固定母版 · 质量异常处理家族',
   standardVersion: TDESIGN_GENERATION_STANDARD_VERSION
 };
 
@@ -544,45 +545,89 @@ export default function TDesignSmartPage() {
     setGeneratorError('');
     setIsGenerating(true);
     try {
+      const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
       const prompt = buildTDesignGenerationPrompt({
         concept: concept || '参考图中的主体',
-        hasReferenceImage: Boolean(referenceImageBase64)
+        hasReferenceImage: Boolean(referenceImageBase64),
+        cornerRadius,
+        context: generationContext
       });
       const useLocalModel = import.meta.env.VITE_USE_LOCAL_MODEL === 'true';
-      const localContent: Array<Record<string, unknown>> = [{ type: 'text', text: prompt }];
-      if (referenceImageBase64 && referenceImageMimeType) {
-        localContent.push({
-          type: 'image_url',
-          image_url: { url: `data:${referenceImageMimeType};base64,${referenceImageBase64}` }
+      let generatedText: string;
+      let sourceModel: string | undefined;
+      let externalReferenceLabel: string | undefined;
+
+      if (generationContext.family?.presetSvg) {
+        generatedText = generationContext.family.presetSvg;
+        sourceModel = referenceImageBase64
+          ? `参考归一化 · ${generationContext.family.label}`
+          : `固定母版 · ${generationContext.family.label}`;
+      } else {
+        const localContent: Array<Record<string, unknown>> = [{ type: 'text', text: prompt }];
+        if (referenceImageBase64 && referenceImageMimeType) {
+          localContent.push({
+            type: 'image_url',
+            image_url: { url: `data:${referenceImageMimeType};base64,${referenceImageBase64}` }
+          });
+        }
+        const response = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(useLocalModel ? {
+            model: 'gemma-3-4b-it',
+            messages: [{ role: 'user', content: localContent }],
+            temperature: 0.1,
+            max_tokens: 4096,
+            stream: false
+          } : {
+            concept: concept || null,
+            prompt,
+            image: referenceImageBase64 && referenceImageMimeType
+              ? { mimeType: referenceImageMimeType, data: referenceImageBase64 }
+              : null
+          })
         });
+        if (!response.ok) {
+          if (useLocalModel && response.status >= 500) throw new Error('本地模型尚未启动或仍在加载');
+          const errorPayload = await response.json().catch(() => null);
+          const referenceHint = errorPayload?.reference?.provider === 'Iconfont'
+            && typeof errorPayload.reference.id === 'number'
+            && typeof errorPayload.reference.name === 'string'
+            ? `Iconfont 已命中「${errorPayload.reference.name}」#${errorPayload.reference.id}，但模型生成失败；`
+            : '';
+          const rawError = String(errorPayload?.detail || errorPayload?.error || `生成接口错误 ${response.status}`);
+          const readableError = rawError.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          throw new Error(`${referenceHint}${readableError}`);
+        }
+        const payload = await response.json();
+        generatedText = useLocalModel
+          ? payload?.choices?.[0]?.message?.content
+          : payload.text;
+        if (typeof generatedText !== 'string') throw new Error('生成接口没有返回 SVG');
+        if (
+          payload?.reference?.provider === 'Iconfont'
+          && typeof payload.reference.id === 'number'
+          && typeof payload.reference.name === 'string'
+        ) {
+          externalReferenceLabel = payload.reference.match === 'exact-name'
+            ? `Iconfont 同名收藏优先「${payload.reference.name}」#${payload.reference.id}`
+            : `Iconfont 模糊收藏优先「${payload.reference.name}」#${payload.reference.id}`;
+        }
+        sourceModel = useLocalModel
+          ? generationContext.family
+            ? `本地 Gemma 3 4B · ${generationContext.family.label}`
+            : '本地 Gemma 3 4B'
+          : typeof payload.model === 'string'
+            ? generationContext.family
+              ? `${payload.model} · ${generationContext.family.label}`
+              : payload.model
+            : undefined;
+        if (sourceModel && externalReferenceLabel) {
+          sourceModel = `${sourceModel} · ${externalReferenceLabel}`;
+        }
       }
-      const response = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(useLocalModel ? {
-          model: 'gemma-3-4b-it',
-          messages: [{ role: 'user', content: localContent }],
-          temperature: 0.1,
-          max_tokens: 4096,
-          stream: false
-        } : {
-          prompt,
-          image: referenceImageBase64 && referenceImageMimeType
-            ? { mimeType: referenceImageMimeType, data: referenceImageBase64 }
-            : null
-        })
-      });
-      if (!response.ok) {
-        if (useLocalModel && response.status >= 500) throw new Error('本地模型尚未启动或仍在加载');
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.detail || payload?.error || `生成接口错误 ${response.status}`);
-      }
-      const payload = await response.json();
-      const generatedText = useLocalModel
-        ? payload?.choices?.[0]?.message?.content
-        : payload.text;
-      if (typeof generatedText !== 'string') throw new Error('生成接口没有返回 SVG');
-      const validation = validateTDesignGeneratedIcon(generatedText);
+
+      const validation = validateTDesignGeneratedIcon(generatedText, generationContext);
       if (!validation.ok) throw new Error(`生成结果未通过规范校验：${validation.reason}`);
 
       const label = concept || '参考图图标';
@@ -593,9 +638,7 @@ export default function TDesignSmartPage() {
         viewBox: '0 0 32 32',
         body: validation.body,
         standardVersion: TDESIGN_GENERATION_STANDARD_VERSION,
-        ...(useLocalModel
-          ? { sourceModel: '本地 Gemma 3 4B' }
-          : typeof payload.model === 'string' ? { sourceModel: payload.model } : {})
+        ...(sourceModel ? { sourceModel } : {})
       };
       setGeneratedIcons((current) => [newIcon, ...current]);
       setActiveCategory(generatedCategory);
@@ -603,7 +646,9 @@ export default function TDesignSmartPage() {
       setGenerationConcept('');
       clearReferenceImage();
       setIsGeneratorOpen(false);
-      setToast(`已生成“${label}”`);
+      setToast(externalReferenceLabel
+        ? `已生成“${label}” · 参考 ${externalReferenceLabel}`
+        : `已生成“${label}”`);
     } catch (error) {
       setGeneratorError(error instanceof Error ? error.message.slice(0, 150) : '图标生成失败，请稍后重试');
     } finally {
@@ -877,6 +922,9 @@ export default function TDesignSmartPage() {
                     className="td-smart-icon-preview"
                     onClick={() => void copyIcon(icon)}
                     aria-label={`复制“${icon.label}”SVG`}
+                    title={activeCategory === generatedCategory && 'sourceModel' in icon && typeof icon.sourceModel === 'string'
+                      ? `生成来源：${icon.sourceModel}`
+                      : undefined}
                   >
                     <SmartIconGraphic
                       icon={icon}

@@ -24,7 +24,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-前端通过 Vite 启动。本地调试 `/api/generate-icon` 时使用 `vercel dev`；只有显式设置 `VITE_USE_LOCAL_MODEL=true` 时，界面才改用本机 `/local-model/v1/chat/completions` 兼容接口。
+前端通过 Vite 启动。开发服务器会在 Node 端直接加载本仓库的 `/api/generate-icon.ts`，并从 `.env.local` 读取 `OPENAI_API_KEY` 等服务端变量；密钥不会进入浏览器。只有显式设置 `VITE_USE_LOCAL_MODEL=true` 时，界面才改用本机 `/local-model/v1/chat/completions` 兼容接口。`vite preview` 只用于静态构建预览，不承载本地服务端生成接口。
 
 ## OpenAI-compatible 配置
 
