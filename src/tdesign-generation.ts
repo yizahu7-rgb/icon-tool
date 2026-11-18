@@ -438,6 +438,7 @@ DRAWING SYSTEM
 - For an uploaded icon reference, match the actual outer silhouette's width-to-height ratio. A nearly square frame must stay nearly square; do not turn it into a narrow portrait frame. Preserve the exact count and placement of internal bars, arrows, and other meaningful marks.
 ${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 15% of this ratio.` : ''}
 ${context?.referenceShape ? `- Classified uploaded-reference outer silhouette: ${context.referenceShape}. ${context.referenceShape === 'square' ? 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
+${context?.referenceShape && ['square', 'horizontal-rectangle', 'vertical-rectangle'].includes(context.referenceShape) ? '- A rounded rectangular reference must become a true four-corner, right-angle rectangle in the editable SVG master. Include all four actual corner vertices. Never replace rounded corners with chamfers, bevels, clipped diagonals, or an octagonal outline. The UI applies the requested corner radius later.' : ''}
 - The complete visible geometry must have at least a 24-unit dominant dimension and be centered near (16,16). Do not return a small drawing surrounded by empty artboard space. Keep the chosen object's proportions; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
@@ -717,6 +718,18 @@ export const validateTDesignGeneratedIcon = (
       if (widthError > 1.5 || heightError > 1.5 || Math.abs(centerX - 16) > 1
         || Math.abs(centerY - 16) > 1) {
         return { ok: false, reason: `参考图形状应使用 ${referenceKeyline.width}×${referenceKeyline.height} Keyline 并居中，当前外轮廓为 ${stroke1Box.width.toFixed(1)}×${stroke1Box.height.toFixed(1)}` };
+      }
+      if (context?.referenceShape !== 'circle') {
+        const corners = [
+          { x: stroke1Box.x, y: stroke1Box.y },
+          { x: stroke1Box.x + stroke1Box.width, y: stroke1Box.y },
+          { x: stroke1Box.x, y: stroke1Box.y + stroke1Box.height },
+          { x: stroke1Box.x + stroke1Box.width, y: stroke1Box.y + stroke1Box.height }
+        ];
+        if (corners.some((corner) => stroke1Points.every((point) =>
+          Math.hypot(point.x - corner.x, point.y - corner.y) > 0.75))) {
+          return { ok: false, reason: '参考图是圆角矩形：SVG 母版必须保留四个直角顶点，不能画成斜切角或八边形；圆角由页面参数处理' };
+        }
       }
     }
     if (context?.referenceAspectRatio && stroke1Box && stroke1Box.height > 0) {

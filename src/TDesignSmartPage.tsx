@@ -712,7 +712,7 @@ export default function TDesignSmartPage() {
 
       let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
       if (!validation.ok && referenceImageBase64 && referenceImageMimeType && !generationContext.family?.presetSvg) {
-        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw from the attached reference image. Match its outer silhouette proportions and internal marks exactly, then fill the selected keyline at normal icon scale.`;
+        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw from the attached reference image. Match its outer silhouette proportions and internal marks exactly, then fill the selected keyline at normal icon scale. If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page adds roundness from the user's radius setting.`;
         const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
