@@ -27,6 +27,7 @@ export type TDesignGenerationContext = {
   family?: TDesignGenerationFamily;
   references: readonly TDesignGenerationReference[];
   stroke2Role: 'core-detail' | 'state-symbol';
+  referenceAspectRatio?: number;
 };
 
 type GenerationPromptOptions = {
@@ -433,6 +434,9 @@ DRAWING SYSTEM
 - Use an exact 32×32 artboard with viewBox="0 0 32 32".
 - Keep ordinary geometry inside x=2..30 and y=2..30. Semantic extremities may cross that keyline but must remain inside the artboard.
 - Choose one centered keyline by visual body: horizontal 26×22, square 24×24, vertical 22×26, or circular/sparse 28×28.
+- For an uploaded icon reference, match the actual outer silhouette's width-to-height ratio. A nearly square frame must stay nearly square; do not turn it into a narrow portrait frame. Preserve the exact count and placement of internal bars, arrows, and other meaningful marks.
+${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 15% of this ratio.` : ''}
+- The complete visible geometry must have at least a 24-unit dominant dimension and be centered near (16,16). Do not return a small drawing surrounded by empty artboard space. Keep the chosen object's proportions; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
 - Use editable centerline paths, not expanded or filled stroke silhouettes.
@@ -694,6 +698,27 @@ export const validateTDesignGeneratedIcon = (
 
     const stroke1Box = measuredGroups.get('stroke1');
     const stroke2Box = measuredGroups.get('stroke2');
+    if (context?.referenceAspectRatio && stroke1Box && stroke1Box.height > 0) {
+      const actualRatio = stroke1Box.width / stroke1Box.height;
+      const ratioError = Math.abs(actualRatio / context.referenceAspectRatio - 1);
+      if (ratioError > 0.15) {
+        return { ok: false, reason: `外轮廓宽高比 ${actualRatio.toFixed(2)} 与参考图 ${context.referenceAspectRatio.toFixed(2)} 不符` };
+      }
+    }
+    // The 32×32 viewBox alone does not guarantee a correctly sized icon.
+    // Apply this conservative gate only to free-form generations: fixed families
+    // have their own exact geometry, while thin objects may have a small minor axis.
+    if (context && !geometry && stroke1Box) {
+      const wholeBox = stroke2Box ? mergeMeasuredBoxes(stroke1Box, stroke2Box) : stroke1Box;
+      if (Math.max(wholeBox.width, wholeBox.height) < 23.5) {
+        return { ok: false, reason: '图形主体过小：32×32 母版中最长方向至少应接近 24px Keyline' };
+      }
+      const centerX = wholeBox.x + wholeBox.width / 2;
+      const centerY = wholeBox.y + wholeBox.height / 2;
+      if (Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
+        return { ok: false, reason: '图形未在 32×32 母版中居中，请按所选 Keyline 调整主体位置' };
+      }
+    }
     if (
       context?.stroke2Role === 'state-symbol'
       && stroke1Box

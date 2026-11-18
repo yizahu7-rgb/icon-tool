@@ -63,6 +63,40 @@ type GeneratedTDesignIcon = TDesignIcon & {
 
 const generatedIconStorageKey = 'tdesign-v2-generated-icons';
 
+const measureReferenceAspectRatio = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
+  const { width, height } = canvas;
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const corners = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]];
+  const background = [0, 1, 2].map((channel) => Math.round(corners.reduce((sum, [x, y]) =>
+    sum + pixels[(y * width + x) * 4 + channel], 0) / corners.length));
+  if (corners.some(([x, y]) => [0, 1, 2].some((channel) =>
+    Math.abs(pixels[(y * width + x) * 4 + channel] - background[channel]) > 24))) return undefined;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  let foregroundCount = 0;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      const difference = Math.max(...background.map((value, channel) =>
+        Math.abs(pixels[index + channel] - value)));
+      if (pixels[index + 3] < 64 || difference < 48) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      foregroundCount += 1;
+    }
+  }
+  if (foregroundCount < width * height * 0.002 || foregroundCount > width * height * 0.35
+    || maxX < minX || maxY < minY) return undefined;
+  const boxWidth = maxX - minX + 1;
+  const boxHeight = maxY - minY + 1;
+  if (boxWidth < 8 || boxHeight < 8) return undefined;
+  return boxWidth / boxHeight;
+};
+
 const simulatedIdentityIcon: GeneratedTDesignIcon = {
   name: 'generated-identity-card-simulation',
   label: '身份证',
@@ -402,6 +436,7 @@ export default function TDesignSmartPage() {
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
   const [referenceImageMimeType, setReferenceImageMimeType] = useState<string | null>(null);
+  const [referenceAspectRatio, setReferenceAspectRatio] = useState<number | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorError, setGeneratorError] = useState('');
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -517,6 +552,7 @@ export default function TDesignSmartPage() {
           return;
         }
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        setReferenceAspectRatio(measureReferenceAspectRatio(canvas, context));
         const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const dataUrl = canvas.toDataURL(mimeType, 0.82);
         setReferenceImage(dataUrl);
@@ -533,6 +569,7 @@ export default function TDesignSmartPage() {
     setReferenceImage(null);
     setReferenceImageBase64(null);
     setReferenceImageMimeType(null);
+    setReferenceAspectRatio(undefined);
     if (generatorFileInputRef.current) generatorFileInputRef.current.value = '';
   };
 
@@ -546,6 +583,9 @@ export default function TDesignSmartPage() {
     setIsGenerating(true);
     try {
       const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
+      if (referenceImageBase64 && referenceAspectRatio) {
+        generationContext.referenceAspectRatio = referenceAspectRatio;
+      }
       const prompt = buildTDesignGenerationPrompt({
         concept: concept || '参考图中的主体',
         hasReferenceImage: Boolean(referenceImageBase64),
@@ -627,7 +667,33 @@ export default function TDesignSmartPage() {
         }
       }
 
-      const validation = validateTDesignGeneratedIcon(generatedText, generationContext);
+      let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
+      if (!validation.ok && referenceImageBase64 && referenceImageMimeType && !generationContext.family?.presetSvg) {
+        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw from the attached reference image. Match its outer silhouette proportions and internal marks exactly, then fill the selected keyline at normal icon scale.`;
+        const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(useLocalModel ? {
+            model: 'gemma-3-4b-it',
+            messages: [{ role: 'user', content: [
+              { type: 'text', text: correctionPrompt },
+              { type: 'image_url', image_url: { url: `data:${referenceImageMimeType};base64,${referenceImageBase64}` } }
+            ] }],
+            temperature: 0.1,
+            max_tokens: 4096,
+            stream: false
+          } : {
+            concept: concept || null,
+            prompt: correctionPrompt,
+            image: { mimeType: referenceImageMimeType, data: referenceImageBase64 }
+          })
+        });
+        if (retryResponse.ok) {
+          const retryPayload = await retryResponse.json();
+          const retryText = useLocalModel ? retryPayload?.choices?.[0]?.message?.content : retryPayload?.text;
+          if (typeof retryText === 'string') validation = validateTDesignGeneratedIcon(retryText, generationContext);
+        }
+      }
       if (!validation.ok) throw new Error(`生成结果未通过规范校验：${validation.reason}`);
 
       const label = concept || '参考图图标';
