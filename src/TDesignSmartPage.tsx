@@ -63,7 +63,12 @@ type GeneratedTDesignIcon = TDesignIcon & {
 
 const generatedIconStorageKey = 'tdesign-v2-generated-icons';
 
-const measureReferenceAspectRatio = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) => {
+type ReferenceShapeAnalysis = {
+  aspectRatio: number;
+  shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
+};
+
+const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): ReferenceShapeAnalysis | undefined => {
   const { width, height } = canvas;
   const pixels = context.getImageData(0, 0, width, height).data;
   const corners = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]];
@@ -76,12 +81,14 @@ const measureReferenceAspectRatio = (canvas: HTMLCanvasElement, context: CanvasR
   let maxX = -1;
   let maxY = -1;
   let foregroundCount = 0;
+  const foreground = new Uint8Array(width * height);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const index = (y * width + x) * 4;
       const difference = Math.max(...background.map((value, channel) =>
         Math.abs(pixels[index + channel] - value)));
       if (pixels[index + 3] < 64 || difference < 48) continue;
+      foreground[y * width + x] = 1;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x);
@@ -94,7 +101,42 @@ const measureReferenceAspectRatio = (canvas: HTMLCanvasElement, context: CanvasR
   const boxWidth = maxX - minX + 1;
   const boxHeight = maxY - minY + 1;
   if (boxWidth < 8 || boxHeight < 8) return undefined;
-  return boxWidth / boxHeight;
+  const aspectRatio = boxWidth / boxHeight;
+  const sideSupport = (vertical: boolean, farSide: boolean) => {
+    let supported = 0;
+    for (let sample = 1; sample <= 9; sample += 1) {
+      const position = sample / 10;
+      const fixed = farSide ? 0.94 : 0.06;
+      const px = minX + Math.round((vertical ? fixed : position) * (boxWidth - 1));
+      const py = minY + Math.round((vertical ? position : fixed) * (boxHeight - 1));
+      const radius = Math.max(2, Math.round((vertical ? boxWidth : boxHeight) * 0.06));
+      let found = false;
+      for (let offset = -radius; offset <= radius && !found; offset += 1) {
+        const x = vertical ? px + offset : px;
+        const y = vertical ? py : py + offset;
+        found = x >= 0 && x < width && y >= 0 && y < height && foreground[y * width + x] === 1;
+      }
+      if (found) supported += 1;
+    }
+    return supported >= 8;
+  };
+  const hasRectangularOutline = sideSupport(true, false) && sideSupport(true, true)
+    && sideSupport(false, false) && sideSupport(false, true);
+  const shape = hasRectangularOutline
+    ? aspectRatio >= 0.85 && aspectRatio <= 1.18 ? 'square'
+      : aspectRatio > 1.18 ? 'horizontal-rectangle' : 'vertical-rectangle'
+    : aspectRatio >= 0.85 && aspectRatio <= 1.18
+      && [0, 0.25, 0.5, 0.75].every((fraction) => {
+        const angle = fraction * Math.PI * 2;
+        const x = minX + Math.round((0.5 + 0.45 * Math.cos(angle)) * (boxWidth - 1));
+        const y = minY + Math.round((0.5 + 0.45 * Math.sin(angle)) * (boxHeight - 1));
+        return foreground[y * width + x] === 1 || Array.from({ length: 25 }, (_, index) => {
+          const dx = index % 5 - 2;
+          const dy = Math.floor(index / 5) - 2;
+          return foreground[(y + dy) * width + x + dx] === 1;
+        }).some(Boolean);
+      }) ? 'circle' : 'irregular';
+  return { aspectRatio, shape };
 };
 
 const simulatedIdentityIcon: GeneratedTDesignIcon = {
@@ -436,7 +478,7 @@ export default function TDesignSmartPage() {
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [referenceImageBase64, setReferenceImageBase64] = useState<string | null>(null);
   const [referenceImageMimeType, setReferenceImageMimeType] = useState<string | null>(null);
-  const [referenceAspectRatio, setReferenceAspectRatio] = useState<number | undefined>();
+  const [referenceShapeAnalysis, setReferenceShapeAnalysis] = useState<ReferenceShapeAnalysis | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatorError, setGeneratorError] = useState('');
   const [isDraggingImage, setIsDraggingImage] = useState(false);
@@ -552,7 +594,7 @@ export default function TDesignSmartPage() {
           return;
         }
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        setReferenceAspectRatio(measureReferenceAspectRatio(canvas, context));
+        setReferenceShapeAnalysis(analyzeReferenceShape(canvas, context));
         const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const dataUrl = canvas.toDataURL(mimeType, 0.82);
         setReferenceImage(dataUrl);
@@ -569,7 +611,7 @@ export default function TDesignSmartPage() {
     setReferenceImage(null);
     setReferenceImageBase64(null);
     setReferenceImageMimeType(null);
-    setReferenceAspectRatio(undefined);
+    setReferenceShapeAnalysis(undefined);
     if (generatorFileInputRef.current) generatorFileInputRef.current.value = '';
   };
 
@@ -583,8 +625,9 @@ export default function TDesignSmartPage() {
     setIsGenerating(true);
     try {
       const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
-      if (referenceImageBase64 && referenceAspectRatio) {
-        generationContext.referenceAspectRatio = referenceAspectRatio;
+      if (referenceImageBase64 && referenceShapeAnalysis) {
+        generationContext.referenceAspectRatio = referenceShapeAnalysis.aspectRatio;
+        generationContext.referenceShape = referenceShapeAnalysis.shape;
       }
       const prompt = buildTDesignGenerationPrompt({
         concept: concept || '参考图中的主体',
