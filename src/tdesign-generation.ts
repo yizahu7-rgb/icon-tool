@@ -1,4 +1,5 @@
 import type { TDesignIcon } from './tdesign-icons';
+import { straightenBeveledRectanglePath } from './fs-node-icon';
 
 export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.10';
 
@@ -648,6 +649,11 @@ export const validateTDesignGeneratedIcon = (
       if (path.hasAttribute('stroke-miterlimit')) {
         const reason = validateInheritedPathAttribute('stroke-miterlimit', path.getAttribute('stroke-miterlimit') || '');
         if (reason) return { ok: false, reason: `生成路径的 ${reason}` };
+      }
+      if (id === 'stroke1' && context?.referenceShape
+        && ['square', 'horizontal-rectangle', 'vertical-rectangle'].includes(context.referenceShape)) {
+        const straightened = straightenBeveledRectanglePath(pathData);
+        if (straightened) path.setAttribute('d', straightened);
       }
     }
   }
