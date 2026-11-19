@@ -765,19 +765,51 @@ export const validateTDesignGeneratedIcon = (
         if (detailBox && sourceDetails.length === measuredDetails.length) {
           const centerX = detailBox.x + detailBox.width / 2;
           const centerY = detailBox.y + detailBox.height / 2;
-          const shifts = [-3, -2, -1, 0, 1, 2, 3]
-            .flatMap((dx) => [-3, -2, -1, 0, 1, 2, 3].map((dy) => [dx, dy]))
-            .concat([[0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0],
-              [0, -1.5], [0, 1.5], [-1.5, 0], [1.5, 0]])
-            .sort((left, right) => Math.hypot(...left) - Math.hypot(...right));
+          // A coarse distance field rejects impossible placements cheaply. The
+          // exact sampled-path distance is still checked before accepting one.
+          const gridSize = 129;
+          const field = new Float32Array(gridSize * gridSize);
+          for (let gy = 0; gy < gridSize; gy += 1) {
+            for (let gx = 0; gx < gridSize; gx += 1) {
+              const x = gx / 4;
+              const y = gy / 4;
+              let nearest = Number.POSITIVE_INFINITY;
+              for (const point of stroke1Points) {
+                const squared = (point.x - x) ** 2 + (point.y - y) ** 2;
+                if (squared < nearest) nearest = squared;
+              }
+              field[gy * gridSize + gx] = nearest;
+            }
+          }
           let repaired = false;
-          for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55]) {
-            for (const [dx, dy] of shifts) {
-              const candidateX = centerX + dx - detailBox.width * scale / 2;
-              const candidateY = centerY + dy - detailBox.height * scale / 2;
-              if (candidateX < 2 || candidateY < 2
-                || candidateX + detailBox.width * scale > 30
-                || candidateY + detailBox.height * scale > 30) continue;
+          for (let scaleStep = 20; scaleStep >= 5; scaleStep -= 1) {
+            const scale = scaleStep / 20;
+            const halfWidth = detailBox.width * scale / 2;
+            const halfHeight = detailBox.height * scale / 2;
+            const centers: Array<[number, number]> = [[centerX, centerY]];
+            for (let cy = Math.ceil((2 + halfHeight) * 2) / 2; cy <= 30 - halfHeight; cy += 0.5) {
+              for (let cx = Math.ceil((2 + halfWidth) * 2) / 2; cx <= 30 - halfWidth; cx += 0.5) {
+                centers.push([cx, cy]);
+              }
+            }
+            centers.sort((a, b) => (a[0] - centerX) ** 2 + (a[1] - centerY) ** 2
+              - (b[0] - centerX) ** 2 - (b[1] - centerY) ** 2);
+            for (const [candidateCenterX, candidateCenterY] of centers) {
+              if (candidateCenterX - halfWidth < 2 || candidateCenterY - halfHeight < 2
+                || candidateCenterX + halfWidth > 30 || candidateCenterY + halfHeight > 30) continue;
+              const dx = candidateCenterX - centerX;
+              const dy = candidateCenterY - centerY;
+              const candidatePoints = stroke2Points.map((point) => ({
+                x: centerX + (point.x - centerX) * scale + dx,
+                y: centerY + (point.y - centerY) * scale + dy
+              }));
+              if (candidatePoints.some((point) => {
+                const gx = Math.max(0, Math.min(128, Math.round(point.x * 4)));
+                const gy = Math.max(0, Math.min(128, Math.round(point.y * 4)));
+                return field[gy * gridSize + gx] < (requiredLayerGap - 0.25) ** 2;
+              })) continue;
+              const gap = getMinimumPointDistance(stroke1Points, candidatePoints);
+              if (gap < requiredLayerGap - 0.05) continue;
               const matrix = {
                 a: scale, b: 0, c: 0, d: scale,
                 e: centerX * (1 - scale) + dx,
@@ -789,11 +821,11 @@ export const validateTDesignGeneratedIcon = (
               if (boxes.some((box) => box.x < 0 || box.y < 0
                 || box.x + box.width > 32 || box.y + box.height > 32)) continue;
               const points = measuredDetails.flatMap(samplePathPoints);
-              const gap = getMinimumPointDistance(stroke1Points, points);
-              if (gap < requiredLayerGap - 0.05) continue;
+              const finalGap = getMinimumPointDistance(stroke1Points, points);
+              if (finalGap < requiredLayerGap - 0.05) continue;
               adjusted.forEach((path, index) => sourceDetails[index].setAttribute('d', path));
               stroke2Points = points;
-              minimumLayerGap = gap;
+              minimumLayerGap = finalGap;
               measuredGroups.set('stroke2', boxes.reduce<MeasuredBox | undefined>((merged, box) =>
                 mergeMeasuredBoxes(merged, box), undefined)!);
               repaired = true;
