@@ -695,6 +695,59 @@ export const validateTDesignGeneratedIcon = (
       measuredPaths.set(groupId, [...(measuredPaths.get(groupId) || []), path]);
     }
 
+    // The uploaded bitmap supplies topology, not physical size. Bring a small
+    // generated drawing up to the selected 32px-master keyline before checking gaps.
+    if (context && !context.family?.geometry) {
+      const outer = measuredGroups.get('stroke1');
+      const detail = measuredGroups.get('stroke2');
+      const bounds = outer && (context.referenceShape === 'square'
+        || context.referenceShape === 'horizontal-rectangle'
+        || context.referenceShape === 'vertical-rectangle'
+        || context.referenceShape === 'circle')
+        ? outer : outer && detail ? mergeMeasuredBoxes(outer, detail) : outer;
+      if (bounds && bounds.width > 0 && bounds.height > 0) {
+        const aspect = bounds.width / bounds.height;
+        const keyline = context.referenceShape === 'square' ? { width: 24, height: 24 }
+          : context.referenceShape === 'horizontal-rectangle' ? { width: 26, height: 22 }
+            : context.referenceShape === 'vertical-rectangle' ? { width: 22, height: 26 }
+              : context.referenceShape === 'circle' ? { width: 28, height: 28 }
+                : aspect > 1.25 ? { width: 26, height: 22 }
+                  : aspect < 0.8 ? { width: 22, height: 26 }
+                    : { width: 24, height: 24 };
+        const centerX = bounds.x + bounds.width / 2;
+        const centerY = bounds.y + bounds.height / 2;
+        const undersized = Math.max(bounds.width, bounds.height) < 23.5;
+        if (undersized || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
+          const scale = undersized ? Math.min(keyline.width / bounds.width, keyline.height / bounds.height) : 1;
+          const matrix = { a: scale, b: 0, c: 0, d: scale,
+            e: 16 - centerX * scale, f: 16 - centerY * scale };
+          const sourcePaths = Array.from(root.querySelectorAll('path'));
+          const measured = Array.from(measurementSvg.querySelectorAll('path'));
+          sourcePaths.forEach((path, index) => {
+            let data = transformMasterGoPath(path.getAttribute('d') || '', matrix);
+            if (path.parentElement?.getAttribute('id') === 'stroke1') {
+              const expected = context.referenceShape === 'square' ? { x: 4, y: 4, width: 24, height: 24 }
+                : context.referenceShape === 'horizontal-rectangle' ? { x: 3, y: 5, width: 26, height: 22 }
+                  : context.referenceShape === 'vertical-rectangle' ? { x: 5, y: 3, width: 22, height: 26 }
+                    : null;
+              if (expected) data = straightenBeveledRectanglePath(data, expected) || data;
+            }
+            path.setAttribute('d', data);
+            measured[index].setAttribute('d', data);
+          });
+          measuredGroups.clear();
+          sourcePaths.forEach((path, index) => {
+            const box = measured[index].getBBox();
+            if (box.x < 0 || box.y < 0 || box.x + box.width > 32 || box.y + box.height > 32) {
+              throw new Error('normalized path outside artboard');
+            }
+            const groupId = path.parentElement?.getAttribute('id') || '';
+            measuredGroups.set(groupId, mergeMeasuredBoxes(measuredGroups.get(groupId), box));
+          });
+        }
+      }
+    }
+
     const geometry = context?.family?.geometry;
     const stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
     let stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
