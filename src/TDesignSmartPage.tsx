@@ -66,6 +66,7 @@ const generatedIconStorageKey = 'tdesign-v2-generated-icons';
 type ReferenceShapeAnalysis = {
   aspectRatio: number;
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
+  interiorVerticalGap?: number;
 };
 
 const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): ReferenceShapeAnalysis | undefined => {
@@ -135,7 +136,46 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
           return foreground[(y + dy) * width + x + dx] === 1;
         }).some(Boolean);
       }) ? 'circle' : 'irregular';
-  return { aspectRatio, shape };
+  const visited = new Uint8Array(width * height);
+  const components: Array<{ x: number; y: number; right: number; bottom: number; area: number }> = [];
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const start = y * width + x;
+      if (!foreground[start] || visited[start]) continue;
+      const queue = [start];
+      visited[start] = 1;
+      const component = { x, y, right: x, bottom: y, area: 0 };
+      for (let head = 0; head < queue.length; head += 1) {
+        const index = queue[head];
+        const px = index % width;
+        const py = Math.floor(index / width);
+        component.x = Math.min(component.x, px);
+        component.y = Math.min(component.y, py);
+        component.right = Math.max(component.right, px);
+        component.bottom = Math.max(component.bottom, py);
+        component.area += 1;
+        for (const neighbor of [index - 1, index + 1, index - width, index + width]) {
+          if (neighbor < 0 || neighbor >= foreground.length || visited[neighbor] || !foreground[neighbor]) continue;
+          if (Math.abs(neighbor % width - px) + Math.abs(Math.floor(neighbor / width) - py) !== 1) continue;
+          visited[neighbor] = 1;
+          queue.push(neighbor);
+        }
+      }
+      if (component.area >= 3 && component.x > minX + 2 && component.right < maxX - 2
+        && component.y > minY + 2 && component.bottom < maxY - 2) components.push(component);
+    }
+  }
+  const bar = components.filter((item) => (item.right - item.x + 1) >= boxWidth * 0.3
+    && (item.right - item.x + 1) >= (item.bottom - item.y + 1) * 2
+    && item.y < minY + boxHeight * 0.5)
+    .sort((a, b) => a.y - b.y)[0];
+  const below = bar && components.filter((item) => item.y > bar.bottom
+    && item.x < bar.right && item.right > bar.x).sort((a, b) => a.y - b.y)[0];
+  const visibleGap = bar && below ? below.y - bar.bottom - 1 : 0;
+  const interiorVerticalGap = visibleGap > 0
+    ? Math.max(3.5, Math.min(6, visibleGap * (shape === 'square' ? 24 : 26) / boxHeight + 2))
+    : undefined;
+  return { aspectRatio, shape, interiorVerticalGap };
 };
 
 const simulatedIdentityIcon: GeneratedTDesignIcon = {
@@ -627,6 +667,7 @@ export default function TDesignSmartPage() {
       if (referenceImageBase64 && referenceShapeAnalysis) {
         generationContext.referenceAspectRatio = referenceShapeAnalysis.aspectRatio;
         generationContext.referenceShape = referenceShapeAnalysis.shape;
+        generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
       }
       const prompt = buildTDesignGenerationPrompt({
         concept: concept || '参考图中的主体',
