@@ -1,5 +1,5 @@
 import type { TDesignIcon } from './tdesign-icons';
-import { straightenBeveledRectanglePath } from './fs-node-icon';
+import { straightenBeveledRectanglePath, transformMasterGoPath } from './fs-node-icon';
 
 export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.10';
 
@@ -690,13 +690,55 @@ export const validateTDesignGeneratedIcon = (
 
     const geometry = context?.family?.geometry;
     const stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
-    const stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
+    let stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
     // Historical localStorage entries are revalidated without generation context.
     // Preserve those records as-is; enforce the stricter inter-layer gap on every
     // newly generated icon, which always supplies its resolved context.
     if (context && stroke1Points.length && stroke2Points.length) {
-      const minimumLayerGap = getMinimumPointDistance(stroke1Points, stroke2Points);
+      let minimumLayerGap = getMinimumPointDistance(stroke1Points, stroke2Points);
       const requiredLayerGap = geometry?.minimumLayerGap ?? MIN_LAYER_CENTERLINE_GAP;
+      if (minimumLayerGap < requiredLayerGap - 0.05 && !geometry) {
+        const sourceDetails = Array.from(root.querySelectorAll('#stroke2 path'));
+        const measuredDetails = measuredPaths.get('stroke2') || [];
+        const originalPaths = sourceDetails.map((path) => path.getAttribute('d') || '');
+        const detailBox = measuredGroups.get('stroke2');
+        if (detailBox && sourceDetails.length === measuredDetails.length) {
+          const centerX = detailBox.x + detailBox.width / 2;
+          const centerY = detailBox.y + detailBox.height / 2;
+          const shifts = [
+            [0, 0], [0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0],
+            [0, -1], [0, 1], [-1, 0], [1, 0],
+            [0, -1.5], [0, 1.5], [-1.5, 0], [1.5, 0]
+          ];
+          let repaired = false;
+          for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65]) {
+            for (const [dx, dy] of shifts) {
+              const matrix = {
+                a: scale, b: 0, c: 0, d: scale,
+                e: centerX * (1 - scale) + dx,
+                f: centerY * (1 - scale) + dy
+              };
+              const adjusted = originalPaths.map((path) => transformMasterGoPath(path, matrix));
+              adjusted.forEach((path, index) => measuredDetails[index].setAttribute('d', path));
+              const boxes = measuredDetails.map((path) => path.getBBox());
+              if (boxes.some((box) => box.x < 0 || box.y < 0
+                || box.x + box.width > 32 || box.y + box.height > 32)) continue;
+              const points = measuredDetails.flatMap(samplePathPoints);
+              const gap = getMinimumPointDistance(stroke1Points, points);
+              if (gap < requiredLayerGap - 0.05) continue;
+              adjusted.forEach((path, index) => sourceDetails[index].setAttribute('d', path));
+              stroke2Points = points;
+              minimumLayerGap = gap;
+              measuredGroups.set('stroke2', boxes.reduce<MeasuredBox | undefined>((merged, box) =>
+                mergeMeasuredBoxes(merged, box), undefined)!);
+              repaired = true;
+              break;
+            }
+            if (repaired) break;
+          }
+          if (!repaired) originalPaths.forEach((path, index) => measuredDetails[index].setAttribute('d', path));
+        }
+      }
       if (minimumLayerGap < requiredLayerGap - 0.05) {
         return {
           ok: false,

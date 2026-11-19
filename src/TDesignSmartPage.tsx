@@ -710,8 +710,8 @@ export default function TDesignSmartPage() {
       }
 
       let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
-      if (!validation.ok && referenceImageBase64 && referenceImageMimeType && !generationContext.family?.presetSvg) {
-        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw from the attached reference image. Match its outer silhouette proportions and internal marks exactly, then fill the selected keyline at normal icon scale. If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page adds roundness from the user's radius setting.`;
+      if (!validation.ok && !generationContext.family?.presetSvg) {
+        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw the icon with the required 3.5-unit minimum centerline gap between stroke1 and stroke2. Preserve the subject and internal symbol, but reduce or reposition the internal symbol within its effective cavity as needed. ${referenceImageBase64 ? 'Match the attached reference image’s silhouette and internal marks.' : 'Keep the chosen semantic metaphor recognizable.'} If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page adds roundness from the user's radius setting.`;
         const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -719,7 +719,9 @@ export default function TDesignSmartPage() {
             model: 'gemma-3-4b-it',
             messages: [{ role: 'user', content: [
               { type: 'text', text: correctionPrompt },
-              { type: 'image_url', image_url: { url: `data:${referenceImageMimeType};base64,${referenceImageBase64}` } }
+              ...(referenceImageBase64 && referenceImageMimeType
+                ? [{ type: 'image_url', image_url: { url: `data:${referenceImageMimeType};base64,${referenceImageBase64}` } }]
+                : [])
             ] }],
             temperature: 0.1,
             max_tokens: 4096,
@@ -727,7 +729,9 @@ export default function TDesignSmartPage() {
           } : {
             concept: concept || null,
             prompt: correctionPrompt,
-            image: { mimeType: referenceImageMimeType, data: referenceImageBase64 }
+            image: referenceImageBase64 && referenceImageMimeType
+              ? { mimeType: referenceImageMimeType, data: referenceImageBase64 }
+              : null
           })
         });
         if (retryResponse.ok) {
