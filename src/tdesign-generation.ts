@@ -415,13 +415,13 @@ export const buildTDesignGenerationPrompt = ({
   context
 }: GenerationPromptOptions) => {
   const sourceRule = hasReferenceImage
-    ? 'Use the attached image only as the semantic and topology reference. Preserve its object count, silhouette type, openings, directions, foreground/background order, overlaps, connection points, and internal-symbol meaning, but normalize all coordinates, scale, spacing, and visual centering to the TDesign v2 drawing system below. Do not preserve an off-spec source size, source padding, source alignment, stroke styling, or corner radius.'
+    ? 'First isolate the icon itself: ignore captions, labels, screenshots, and surrounding UI. Treat every visible icon stroke as structural evidence. Before drawing, identify the object count, every open endpoint, disconnected segment, junction, gap, direction, and internal mark. Preserve that topology exactly, including short strokes that might look decorative; do not close an open edge, merge two strokes, delete one side of a pair, or replace the silhouette with a familiar generic icon. Normalize only coordinates, scale, spacing, visual centering, stroke styling, and adjustable corner radius to TDesign v2.'
     : `Use the approved reference context below before drawing. Do not invent a new metaphor when a family master or same-semantic reference exists.`;
 
   const referenceContext = hasReferenceImage
-    ? `${formatGenerationContext(context)}
+    ? `${formatGenerationContext(context ? { ...context, references: [] } : undefined)}
 
-The user-provided image has priority for semantic topology, but it never overrides the 32×32 artboard, the selected TDesign v2 keyline, a locked family master, geometric centering, layer separation, or required optical spacing.`
+The user-provided icon is the structural source. Other same-name library icons must not replace its silhouette or internal marks. A locked family master still governs geometry where applicable.`
     : formatGenerationContext(context);
 
   return `You are an SVG icon engineer. Create one editable outline icon following ${TDESIGN_GENERATION_STANDARD_VERSION}.
@@ -450,7 +450,7 @@ ${context?.referenceInteriorGap ? `- The reference has a separate upper horizont
 - The editable source master must keep every user-adjustable exterior corner sharp. The page currently applies a ${cornerRadius}-unit corner radius to stroke1 after generation; do not bake that radius or any reference-image corner radius into the SVG path. Use A/C/S/Q/T curves only for intrinsic semantic curves such as true circles, lenses, wheels, or organic contours, never merely to imitate rounded corners from the reference image.
 - Compound-icon gaps should normally be 0.5-unit increments and no wider than 2.5 units.
 - Use exactly one primary metaphor and at most one state modifier. Do not draw one element for every word in the concept.
-- Omit tape, folds, dividers, labels, texture, and construction detail unless removing it would change the core meaning.
+${hasReferenceImage ? '- Keep all visible icon strokes, even short ones. Do not omit a source detail merely because its semantic purpose is unclear. Ignore only text or UI outside the icon.' : '- Omit tape, folds, dividers, labels, texture, and construction detail unless removing it would change the core meaning.'}
 - Icons in the same semantic family must reuse the same base silhouette and keyline; vary only the state symbol.
 - Prefer one outer path and one state-symbol path. Before exceeding three visible paths, remove any detail that is not semantically indispensable.
 

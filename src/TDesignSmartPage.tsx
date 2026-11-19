@@ -67,6 +67,7 @@ type ReferenceShapeAnalysis = {
   aspectRatio: number;
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
   interiorVerticalGap?: number;
+  subjectBounds: { x: number; y: number; width: number; height: number };
 };
 
 const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): ReferenceShapeAnalysis | undefined => {
@@ -99,6 +100,46 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
   }
   if (foregroundCount < width * height * 0.002 || foregroundCount > width * height * 0.35
     || maxX < minX || maxY < minY) return undefined;
+  const fullWidth = maxX - minX + 1;
+  const fullHeight = maxY - minY + 1;
+  const visited = new Uint8Array(width * height);
+  const components: Array<{ x: number; y: number; right: number; bottom: number; area: number }> = [];
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      const start = y * width + x;
+      if (!foreground[start] || visited[start]) continue;
+      const queue = [start];
+      visited[start] = 1;
+      const component = { x, y, right: x, bottom: y, area: 0 };
+      for (let head = 0; head < queue.length; head += 1) {
+        const index = queue[head];
+        const px = index % width;
+        const py = Math.floor(index / width);
+        component.x = Math.min(component.x, px);
+        component.y = Math.min(component.y, py);
+        component.right = Math.max(component.right, px);
+        component.bottom = Math.max(component.bottom, py);
+        component.area += 1;
+        for (const neighbor of [index - 1, index + 1, index - width, index + width]) {
+          if (neighbor < 0 || neighbor >= foreground.length || visited[neighbor] || !foreground[neighbor]) continue;
+          if (Math.abs(neighbor % width - px) + Math.abs(Math.floor(neighbor / width) - py) !== 1) continue;
+          visited[neighbor] = 1;
+          queue.push(neighbor);
+        }
+      }
+      if (component.area >= 3) components.push(component);
+    }
+  }
+  // A screenshot may contain a caption below the icon. Measure and send the
+  // connected icon silhouette, not the union of every dark pixel in the file.
+  const subject = [...components].sort((a, b) => b.area - a.area)[0];
+  if (!subject || subject.area < foregroundCount * 0.12
+    || subject.right - subject.x + 1 < fullWidth * 0.4
+    || subject.bottom - subject.y + 1 < fullHeight * 0.4) return undefined;
+  minX = subject.x;
+  minY = subject.y;
+  maxX = subject.right;
+  maxY = subject.bottom;
   const boxWidth = maxX - minX + 1;
   const boxHeight = maxY - minY + 1;
   if (boxWidth < 8 || boxHeight < 8) return undefined;
@@ -136,46 +177,21 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
           return foreground[(y + dy) * width + x + dx] === 1;
         }).some(Boolean);
       }) ? 'circle' : 'irregular';
-  const visited = new Uint8Array(width * height);
-  const components: Array<{ x: number; y: number; right: number; bottom: number; area: number }> = [];
-  for (let y = minY; y <= maxY; y += 1) {
-    for (let x = minX; x <= maxX; x += 1) {
-      const start = y * width + x;
-      if (!foreground[start] || visited[start]) continue;
-      const queue = [start];
-      visited[start] = 1;
-      const component = { x, y, right: x, bottom: y, area: 0 };
-      for (let head = 0; head < queue.length; head += 1) {
-        const index = queue[head];
-        const px = index % width;
-        const py = Math.floor(index / width);
-        component.x = Math.min(component.x, px);
-        component.y = Math.min(component.y, py);
-        component.right = Math.max(component.right, px);
-        component.bottom = Math.max(component.bottom, py);
-        component.area += 1;
-        for (const neighbor of [index - 1, index + 1, index - width, index + width]) {
-          if (neighbor < 0 || neighbor >= foreground.length || visited[neighbor] || !foreground[neighbor]) continue;
-          if (Math.abs(neighbor % width - px) + Math.abs(Math.floor(neighbor / width) - py) !== 1) continue;
-          visited[neighbor] = 1;
-          queue.push(neighbor);
-        }
-      }
-      if (component.area >= 3 && component.x > minX + 2 && component.right < maxX - 2
-        && component.y > minY + 2 && component.bottom < maxY - 2) components.push(component);
-    }
-  }
-  const bar = components.filter((item) => (item.right - item.x + 1) >= boxWidth * 0.3
+  const interiorComponents = components.filter((component) => component !== subject
+    && component.x > minX + 2 && component.right < maxX - 2
+    && component.y > minY + 2 && component.bottom < maxY - 2);
+  const bar = interiorComponents.filter((item) => (item.right - item.x + 1) >= boxWidth * 0.3
     && (item.right - item.x + 1) >= (item.bottom - item.y + 1) * 2
     && item.y < minY + boxHeight * 0.5)
     .sort((a, b) => a.y - b.y)[0];
-  const below = bar && components.filter((item) => item.y > bar.bottom
+  const below = bar && interiorComponents.filter((item) => item.y > bar.bottom
     && item.x < bar.right && item.right > bar.x).sort((a, b) => a.y - b.y)[0];
   const visibleGap = bar && below ? below.y - bar.bottom - 1 : 0;
   const interiorVerticalGap = visibleGap > 0
     ? Math.max(3.5, Math.min(6, visibleGap * (shape === 'square' ? 24 : 26) / boxHeight + 2))
     : undefined;
-  return { aspectRatio, shape, interiorVerticalGap };
+  return { aspectRatio, shape, interiorVerticalGap,
+    subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
 const simulatedIdentityIcon: GeneratedTDesignIcon = {
@@ -633,7 +649,27 @@ export default function TDesignSmartPage() {
           return;
         }
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        setReferenceShapeAnalysis(analyzeReferenceShape(canvas, context));
+        const analysis = analyzeReferenceShape(canvas, context);
+        setReferenceShapeAnalysis(analysis);
+        if (analysis) {
+          const { x, y, width, height } = analysis.subjectBounds;
+          const padding = Math.max(4, Math.round(Math.max(width, height) * 0.12));
+          const left = Math.max(0, x - padding);
+          const top = Math.max(0, y - padding);
+          const right = Math.min(canvas.width, x + width + padding);
+          const bottom = Math.min(canvas.height, y + height + padding);
+          const cropped = document.createElement('canvas');
+          cropped.width = right - left;
+          cropped.height = bottom - top;
+          const cropContext = cropped.getContext('2d');
+          if (cropContext) {
+            cropContext.drawImage(canvas, left, top, cropped.width, cropped.height,
+              0, 0, cropped.width, cropped.height);
+            canvas.width = cropped.width;
+            canvas.height = cropped.height;
+            context.drawImage(cropped, 0, 0);
+          }
+        }
         const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const dataUrl = canvas.toDataURL(mimeType, 0.82);
         setReferenceImage(dataUrl);
@@ -665,7 +701,10 @@ export default function TDesignSmartPage() {
     try {
       const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
       if (referenceImageBase64 && referenceShapeAnalysis) {
-        generationContext.referenceAspectRatio = referenceShapeAnalysis.aspectRatio;
+        // Disconnected external strokes can sit outside the dominant component.
+        // Their combined ratio cannot be inferred reliably from one pixel box.
+        generationContext.referenceAspectRatio = referenceShapeAnalysis.shape === 'irregular'
+          ? undefined : referenceShapeAnalysis.aspectRatio;
         generationContext.referenceShape = referenceShapeAnalysis.shape;
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
       }
@@ -752,7 +791,7 @@ export default function TDesignSmartPage() {
 
       let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
       if (!validation.ok && !generationContext.family?.presetSvg) {
-        const correctionPrompt = `${prompt}\n\nPREVIOUS ATTEMPT FAILED VALIDATION: ${validation.reason}. Redraw the whole composition on the selected keyline. Keep the reference topology, but allocate a larger effective interior cavity if necessary, then size and place stroke2 so every unrelated stroke1/stroke2 centerline is at least 3.5 units apart. Do not merely repeat the previous coordinates. ${referenceImageBase64 ? 'Match the attached reference image’s object relationships, openings, and internal marks.' : 'Keep the chosen semantic metaphor recognizable.'} If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page adds roundness from the user's radius setting.`;
+        const correctionPrompt = `${prompt}\n\nPREVIOUS SVG (revise its geometry, do not return it unchanged):\n${generatedText}\n\nVALIDATION FAILURE: ${validation.reason}. Fix this specific measurement by moving or uniformly scaling the relevant geometry within the 32×32 artboard. Do not fix a spacing error by deleting a stroke or changing an opening. ${referenceImageBase64 ? 'Recheck the attached icon stroke by stroke: preserve every visible endpoint, disconnected segment, junction, gap, direction, and internal mark. Ignore any caption outside the icon.' : 'Keep the chosen semantic metaphor recognizable.'} If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page applies the requested corner radius later.`;
         const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
