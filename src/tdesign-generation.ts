@@ -652,7 +652,12 @@ export const validateTDesignGeneratedIcon = (
       }
       if (id === 'stroke1' && context?.referenceShape
         && ['square', 'horizontal-rectangle', 'vertical-rectangle'].includes(context.referenceShape)) {
-        const straightened = straightenBeveledRectanglePath(pathData);
+        const expected = context.referenceShape === 'square'
+          ? { x: 4, y: 4, width: 24, height: 24 }
+          : context.referenceShape === 'horizontal-rectangle'
+            ? { x: 3, y: 5, width: 26, height: 22 }
+            : { x: 5, y: 3, width: 22, height: 26 };
+        const straightened = straightenBeveledRectanglePath(pathData, expected);
         if (straightened) path.setAttribute('d', straightened);
       }
     }

@@ -460,36 +460,41 @@ export const toMasterGoEditablePath = (value: string) => transformPath(value, 0)
 export const adjustPathCornerRadius = (value: string, radius: number) =>
   transformPath(value, Math.max(0, radius));
 
-/** Straightens a simple eight-vertex beveled frame from a rectangular reference. */
-export const straightenBeveledRectanglePath = (value: string): string | null => {
-  const commands = parseAdjustablePath(value);
-  if (!commands || commands.length !== 9 || commands[0].type !== 'M'
-    || commands[8].type !== 'Z' || commands.slice(1, 8).some((command) => command.type !== 'L')) return null;
-  const vertices = commands.slice(0, 8).map((command) => command.end);
-  const xs = vertices.map(([x]) => x);
-  const ys = vertices.map(([, y]) => y);
-  const left = Math.min(...xs);
-  const right = Math.max(...xs);
-  const top = Math.min(...ys);
-  const bottom = Math.max(...ys);
-  const width = right - left;
-  const height = bottom - top;
-  if (width < 8 || height < 8) return null;
-  let straightEdges = 0;
-  let beveledEdges = 0;
-  for (let index = 0; index < vertices.length; index += 1) {
-    const [x, y] = vertices[index];
-    const [nextX, nextY] = vertices[(index + 1) % vertices.length];
-    const dx = Math.abs(nextX - x);
-    const dy = Math.abs(nextY - y);
-    if (Math.min(Math.abs(x - left), Math.abs(x - right), Math.abs(y - top), Math.abs(y - bottom)) > 0.2) return null;
-    if (dx < 0.2 && dy >= height * 0.5) straightEdges += 1;
-    else if (dy < 0.2 && dx >= width * 0.5) straightEdges += 1;
-    else if (dx > 0.2 && dy > 0.2 && dx <= width * 0.25 && dy <= height * 0.25) beveledEdges += 1;
-    else return null;
-  }
-  if (straightEdges !== 4 || beveledEdges !== 4) return null;
-  return `M${format(left)} ${format(top)}H${format(right)}V${format(bottom)}H${format(left)}Z`;
+/** Restores a rounded or beveled rectangular outer subpath to a sharp master. */
+export const straightenBeveledRectanglePath = (
+  value: string,
+  expected: { x: number; y: number; width: number; height: number }
+): string | null => {
+  const subpaths = value.trim().split(/(?=M)/).filter(Boolean);
+  let changed = false;
+  const output = subpaths.map((subpath) => {
+    if (changed) return subpath;
+    const commands = parseAdjustablePath(subpath);
+    if (!commands || commands[0]?.type !== 'M' || commands[commands.length - 1]?.type !== 'Z') return subpath;
+    const points = commands.slice(0, -1).flatMap((command) => {
+      if (command.type === 'C') return [command.end, command.control1, command.control2];
+      if (command.type === 'Q') return [command.end, command.control];
+      return [command.end];
+    });
+    const left = Math.min(...points.map(([x]) => x));
+    const right = Math.max(...points.map(([x]) => x));
+    const top = Math.min(...points.map(([, y]) => y));
+    const bottom = Math.max(...points.map(([, y]) => y));
+    const width = right - left;
+    const height = bottom - top;
+    if (Math.abs(width - expected.width) > 1.5 || Math.abs(height - expected.height) > 1.5
+      || Math.abs(left - expected.x) > 1.5 || Math.abs(top - expected.y) > 1.5) return subpath;
+    const horizontal = commands.filter((command) => command.type === 'L'
+      && Math.abs(command.end[1] - command.start[1]) < 0.2
+      && Math.abs(command.end[0] - command.start[0]) >= width * 0.4).length;
+    const vertical = commands.filter((command) => command.type === 'L'
+      && Math.abs(command.end[0] - command.start[0]) < 0.2
+      && Math.abs(command.end[1] - command.start[1]) >= height * 0.4).length;
+    if (horizontal < 2 || vertical < 2) return subpath;
+    changed = true;
+    return `M${format(expected.x)} ${format(expected.y)}H${format(expected.x + expected.width)}V${format(expected.y + expected.height)}H${format(expected.x)}Z`;
+  });
+  return changed ? output.join(' ') : null;
 };
 
 type SvgMatrixLike = Pick<DOMMatrix, 'a' | 'b' | 'c' | 'd' | 'e' | 'f'>;
