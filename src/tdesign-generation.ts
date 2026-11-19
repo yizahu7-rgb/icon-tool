@@ -765,14 +765,19 @@ export const validateTDesignGeneratedIcon = (
         if (detailBox && sourceDetails.length === measuredDetails.length) {
           const centerX = detailBox.x + detailBox.width / 2;
           const centerY = detailBox.y + detailBox.height / 2;
-          const shifts = [
-            [0, 0], [0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0],
-            [0, -1], [0, 1], [-1, 0], [1, 0],
-            [0, -1.5], [0, 1.5], [-1.5, 0], [1.5, 0]
-          ];
+          const shifts = [-3, -2, -1, 0, 1, 2, 3]
+            .flatMap((dx) => [-3, -2, -1, 0, 1, 2, 3].map((dy) => [dx, dy]))
+            .concat([[0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0],
+              [0, -1.5], [0, 1.5], [-1.5, 0], [1.5, 0]])
+            .sort((left, right) => Math.hypot(...left) - Math.hypot(...right));
           let repaired = false;
-          for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65]) {
+          for (const scale of [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55]) {
             for (const [dx, dy] of shifts) {
+              const candidateX = centerX + dx - detailBox.width * scale / 2;
+              const candidateY = centerY + dy - detailBox.height * scale / 2;
+              if (candidateX < 2 || candidateY < 2
+                || candidateX + detailBox.width * scale > 30
+                || candidateY + detailBox.height * scale > 30) continue;
               const matrix = {
                 a: scale, b: 0, c: 0, d: scale,
                 e: centerX * (1 - scale) + dx,
