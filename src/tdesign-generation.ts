@@ -709,14 +709,18 @@ export const validateTDesignGeneratedIcon = (
         let frameBounds: MeasuredBox | undefined;
         if (context.referenceShape === 'square' && context.referenceTopProtrusions) {
           for (const sourcePath of Array.from(root.querySelectorAll('#stroke1 path'))) {
-            const closedSubpaths = (sourcePath.getAttribute('d') || '').match(/M[^M]*?Z/g) || [];
-            for (const data of closedSubpaths) {
+            const subpaths = (sourcePath.getAttribute('d') || '').match(/M[^M]*/g) || [];
+            for (const data of subpaths) {
               const probe = document.createElementNS('http://www.w3.org/2000/svg', 'path');
               probe.setAttribute('d', data);
               measurementSvg.appendChild(probe);
+              const length = probe.getTotalLength();
+              const start = probe.getPointAtLength(0);
+              const end = probe.getPointAtLength(length);
+              const closed = /Z\s*$/.test(data) || Math.hypot(start.x - end.x, start.y - end.y) < 0.1;
               const box = probe.getBBox();
               probe.remove();
-              if (box.width >= 8 && box.height >= 8 && box.width / box.height >= 0.8
+              if (closed && box.width >= 8 && box.height >= 8 && box.width / box.height >= 0.8
                 && box.width / box.height <= 1.25
                 && (!frameBounds || box.width * box.height > frameBounds.width * frameBounds.height)) {
                 frameBounds = { x: box.x, y: box.y, width: box.width, height: box.height };
