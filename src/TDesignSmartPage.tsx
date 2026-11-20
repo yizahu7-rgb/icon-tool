@@ -544,12 +544,15 @@ export default function TDesignSmartPage() {
   const [referenceImageMimeType, setReferenceImageMimeType] = useState<string | null>(null);
   const [referenceShapeAnalysis, setReferenceShapeAnalysis] = useState<ReferenceShapeAnalysis | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationPhase, setGenerationPhase] = useState('');
   const [generatorError, setGeneratorError] = useState('');
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const generatorTriggerRef = useRef<HTMLButtonElement>(null);
   const generatorPromptRef = useRef<HTMLTextAreaElement>(null);
   const generatorDialogRef = useRef<HTMLElement>(null);
   const isGeneratingRef = useRef(false);
+  const generationControllerRef = useRef<AbortController | null>(null);
+  const generationTimedOutRef = useRef(false);
   const generatorFileInputRef = useRef<HTMLInputElement>(null);
   const [iconSize, setIconSize] = useState<IconSize>(32);
   const [strokeWidth, setStrokeWidth] = useState(1.5);
@@ -707,6 +710,14 @@ export default function TDesignSmartPage() {
     }
     setGeneratorError('');
     setIsGenerating(true);
+    setGenerationPhase('正在绘制图标…');
+    const controller = new AbortController();
+    generationControllerRef.current = controller;
+    generationTimedOutRef.current = false;
+    const timeout = window.setTimeout(() => {
+      generationTimedOutRef.current = true;
+      controller.abort();
+    }, 70000);
     try {
       const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
       if (referenceImageBase64 && referenceShapeAnalysis) {
@@ -744,6 +755,7 @@ export default function TDesignSmartPage() {
         }
         const response = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(useLocalModel ? {
             model: 'gemma-3-4b-it',
@@ -799,11 +811,14 @@ export default function TDesignSmartPage() {
         }
       }
 
+      setGenerationPhase('正在校验图形…');
       let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
       if (!validation.ok && !generationContext.family?.presetSvg) {
+        setGenerationPhase('正在修正图形…');
         const correctionPrompt = `${prompt}\n\nPREVIOUS SVG (revise its geometry, do not return it unchanged):\n${generatedText}\n\nVALIDATION FAILURE: ${validation.reason}. Fix this specific measurement by moving or uniformly scaling the relevant geometry within the 32×32 artboard. Do not fix a spacing error by deleting a stroke or changing an opening. ${referenceImageBase64 ? 'Recheck the attached icon stroke by stroke: preserve every visible endpoint, disconnected segment, junction, gap, direction, and internal mark. Ignore any caption outside the icon.' : 'Keep the chosen semantic metaphor recognizable.'} If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page applies the requested corner radius later.`;
         const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(useLocalModel ? {
             model: 'gemma-3-4b-it',
@@ -852,8 +867,13 @@ export default function TDesignSmartPage() {
         ? `已生成“${label}” · 参考 ${externalReferenceLabel}`
         : `已生成“${label}”`);
     } catch (error) {
-      setGeneratorError(error instanceof Error ? error.message.slice(0, 150) : '图标生成失败，请稍后重试');
+      setGeneratorError(error instanceof Error && error.name === 'AbortError'
+        ? generationTimedOutRef.current ? '生成超过 70 秒，已自动停止。请重试。' : '已取消生成'
+        : error instanceof Error ? error.message.slice(0, 150) : '图标生成失败，请稍后重试');
     } finally {
+      window.clearTimeout(timeout);
+      generationControllerRef.current = null;
+      setGenerationPhase('');
       setIsGenerating(false);
     }
   };
@@ -1064,8 +1084,11 @@ export default function TDesignSmartPage() {
 
             <footer className="td-smart-generator-footer">
               <div className="td-smart-generator-actions">
-                <button type="button" className="td-smart-generator-close" onClick={() => setIsGeneratorOpen(false)} disabled={isGenerating}>
-                  取消
+                <button type="button" className="td-smart-generator-close" onClick={() => {
+                  if (isGenerating) generationControllerRef.current?.abort();
+                  else setIsGeneratorOpen(false);
+                }}>
+                  {isGenerating ? '停止生成' : '取消'}
                 </button>
                 <button
                   type="button"
@@ -1073,7 +1096,7 @@ export default function TDesignSmartPage() {
                   onClick={() => void generateIcon()}
                   disabled={isGenerating || (!generationConcept.trim() && !referenceImageBase64)}
                 >
-                  {isGenerating ? '正在生成…' : '开始生成'}
+                  {isGenerating ? generationPhase : '开始生成'}
                 </button>
               </div>
             </footer>

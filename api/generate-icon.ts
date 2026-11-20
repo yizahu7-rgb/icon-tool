@@ -70,7 +70,7 @@ type IconfontReference = {
 };
 
 const DEFAULT_MODELS = ['gpt-6.1-sol', 'gpt-6-luna'];
-const MODEL_TIME_BUDGET_MS = 50000;
+const MODEL_TIME_BUDGET_MS = 35000;
 const SVG_GENERATION_TOKEN_BUDGET = 8192;
 const ICONFONT_SEARCH_URL = 'https://www.iconfont.cn/api/icon/search.json';
 const ICONFONT_TIMEOUT_MS = 5000;

@@ -780,8 +780,10 @@ export const validateTDesignGeneratedIcon = (
             const halfWidth = detailBox.width * scale / 2;
             const halfHeight = detailBox.height * scale / 2;
             const centers: Array<[number, number]> = [[centerX, centerY]];
-            for (let cy = Math.ceil((2 + halfHeight) * 2) / 2; cy <= 30 - halfHeight; cy += 0.5) {
-              for (let cx = Math.ceil((2 + halfWidth) * 2) / 2; cx <= 30 - halfWidth; cx += 0.5) {
+            // A status mark may move only a few units before its meaning and
+            // optical centering change. Limit the synchronous search accordingly.
+            for (let cy = Math.ceil((centerY - 3) * 2) / 2; cy <= centerY + 3; cy += 0.5) {
+              for (let cx = Math.ceil((centerX - 3) * 2) / 2; cx <= centerX + 3; cx += 0.5) {
                 centers.push([cx, cy]);
               }
             }
