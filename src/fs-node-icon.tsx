@@ -497,6 +497,63 @@ export const straightenBeveledRectanglePath = (
   return changed ? output.join(' ') : null;
 };
 
+/** Straightens short bevels at the corners of a rectangular frame without
+ * replacing its other strokes (for example a calendar's top tabs). */
+export const straightenFrameCornerBevels = (value: string): string | null => {
+  const subpaths = value.trim().split(/(?=M)/).filter(Boolean);
+  let changed = false;
+  const result = subpaths.map((subpath) => {
+    const commands = parseAdjustablePath(subpath);
+    if (!commands || commands[0]?.type !== 'M'
+      || commands[commands.length - 1]?.type !== 'Z'
+      || commands.slice(1, -1).some((command) => command.type !== 'L')) return subpath;
+    const vertices = commands.slice(0, -1).map((command) => command.end);
+    if (vertices.length < 6) return subpath;
+    const left = Math.min(...vertices.map(([x]) => x));
+    const right = Math.max(...vertices.map(([x]) => x));
+    const top = Math.min(...vertices.map(([, y]) => y));
+    const bottom = Math.max(...vertices.map(([, y]) => y));
+    const width = right - left;
+    const height = bottom - top;
+    if (width < 8 || height < 8) return subpath;
+    const axis = (a: Point, b: Point) => Math.abs(a[0] - b[0]) < 0.15 ? 'v'
+      : Math.abs(a[1] - b[1]) < 0.15 ? 'h' : null;
+    const removed = new Set<number>();
+    const replaced = new Map<number, Point>();
+    for (let i = 0; i < vertices.length; i += 1) {
+      const previousIndex = (i - 1 + vertices.length) % vertices.length;
+      const nextIndex = (i + 1) % vertices.length;
+      const afterIndex = (i + 2) % vertices.length;
+      const before = vertices[previousIndex];
+      const start = vertices[i];
+      const end = vertices[nextIndex];
+      const after = vertices[afterIndex];
+      const entering = axis(before, start);
+      const leaving = axis(end, after);
+      if (!entering || !leaving || entering === leaving
+        || axis(start, end) || removed.has(i) || removed.has(nextIndex)) continue;
+      const diagonal = Math.hypot(end[0] - start[0], end[1] - start[1]);
+      const beforeLength = Math.hypot(start[0] - before[0], start[1] - before[1]);
+      const afterLength = Math.hypot(after[0] - end[0], after[1] - end[1]);
+      if (diagonal > Math.min(width, height) * 0.24
+        || beforeLength < Math.min(width, height) * 0.18
+        || afterLength < Math.min(width, height) * 0.18) continue;
+      const corner: Point = entering === 'v' ? [start[0], end[1]] : [end[0], start[1]];
+      if (Math.min(Math.abs(corner[0] - left), Math.abs(corner[0] - right)) > 0.75
+        || (corner[1] > top + height * 0.38 && corner[1] < bottom - height * 0.38)) continue;
+      replaced.set(i, corner);
+      removed.add(nextIndex);
+      changed = true;
+    }
+    if (!replaced.size) return subpath;
+    const output = vertices.flatMap((vertex, index) => removed.has(index)
+      ? [] : [replaced.get(index) || vertex]);
+    return `M${format(output[0][0])} ${format(output[0][1])}${output.slice(1)
+      .map(([x, y]) => ` L${format(x)} ${format(y)}`).join('')} Z`;
+  });
+  return changed ? result.join(' ') : null;
+};
+
 type SvgMatrixLike = Pick<DOMMatrix, 'a' | 'b' | 'c' | 'd' | 'e' | 'f'>;
 
 /** Bakes the rendered SVG transform into path coordinates for design-tool paste. */
