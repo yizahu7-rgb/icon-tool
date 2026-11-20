@@ -32,6 +32,7 @@ export type TDesignGenerationContext = {
   referenceShape?: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
   referenceInteriorGap?: number;
   referenceHasTopBar?: boolean;
+  referenceTopProtrusions?: number;
 };
 
 type GenerationPromptOptions = {
@@ -444,6 +445,7 @@ ${context?.referenceShape ? `- Classified uploaded-reference outer silhouette: $
 ${hasReferenceImage ? '- For every rectangular frame in the reference, including frames with tabs, handles, or other attached parts, draw each adjustable exterior corner as a true right-angle vertex. Never use short diagonal bevels in place of rounded corners. Keep attached parts as separate structural strokes; the UI applies the requested radius to the frame later.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
 ${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
+${context?.referenceTopProtrusions ? `- The reference has ${context.referenceTopProtrusions} distinct short protrusions above its top frame stroke. Preserve their count and positions; do not replace them with a lid, inner dots, or a different object.` : ''}
 - Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames target 24×24; sparse open or fragmented near-square silhouettes target the 28×28 sparse keyline. Horizontal and vertical silhouettes target 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
@@ -914,6 +916,29 @@ export const validateTDesignGeneratedIcon = (
           && points.every((x, index) => index === 0 || x - points[index - 1] <= 1);
       });
       if (!continuousTop) return { ok: false, reason: '参考图顶部有连续横线，生成外框不能缺失中间横线' };
+      if (context.referenceTopProtrusions) {
+        const topRow = [...rows.entries()].filter(([, points]) => {
+          points.sort((a, b) => a - b);
+          return points.length > 1 && points[points.length - 1] - points[0] >= stroke1Box.width * 0.55
+            && points.every((x, index) => index === 0 || x - points[index - 1] <= 1);
+        }).sort((a, b) => a[0] - b[0])[0]?.[0];
+        if (topRow !== undefined) {
+          const topY = topRow / 2;
+          const columns = new Set(stroke1Points.filter((point) => point.y < topY - 0.5
+            && point.x > stroke1Box.x + stroke1Box.width * 0.1
+            && point.x < stroke1Box.x + stroke1Box.width * 0.9)
+            .map((point) => Math.round(point.x * 2)));
+          let protrusions = 0;
+          let previous = -Infinity;
+          for (const column of [...columns].sort((a, b) => a - b)) {
+            if (column - previous > 1) protrusions += 1;
+            previous = column;
+          }
+          if (protrusions !== context.referenceTopProtrusions) {
+            return { ok: false, reason: `参考图顶部有 ${context.referenceTopProtrusions} 个凸耳，生成图却有 ${protrusions} 个` };
+          }
+        }
+      }
     }
     const referenceKeyline = context?.referenceShape === 'square'
       ? { width: 24, height: 24 }

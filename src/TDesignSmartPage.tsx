@@ -68,6 +68,7 @@ type ReferenceShapeAnalysis = {
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
   interiorVerticalGap?: number;
   hasTopBar: boolean;
+  topProtrusions: number;
   subjectBounds: { x: number; y: number; width: number; height: number };
 };
 
@@ -192,14 +193,28 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
     ? Math.max(3.5, Math.min(6, visibleGap * (shape === 'square' ? 24 : 26) / boxHeight + 2))
     : undefined;
   let hasTopBar = false;
+  let topBarY = -1;
   for (let y = minY; y <= minY + boxHeight * 0.4 && !hasTopBar; y += 1) {
     let run = 0;
     for (let x = minX; x <= maxX; x += 1) {
       run = foreground[y * width + x] ? run + 1 : 0;
-      if (run >= boxWidth * 0.55) { hasTopBar = true; break; }
+      if (run >= boxWidth * 0.55) { hasTopBar = true; topBarY = y; break; }
     }
   }
-  return { aspectRatio, shape, interiorVerticalGap, hasTopBar,
+  let topProtrusions = 0;
+  if (topBarY >= minY + 3) {
+    let active = false;
+    for (let x = minX + Math.round(boxWidth * 0.1); x <= maxX - Math.round(boxWidth * 0.1); x += 1) {
+      let columnHasInk = false;
+      for (let y = minY; y < topBarY - 1; y += 1) {
+        if (foreground[y * width + x]) { columnHasInk = true; break; }
+      }
+      if (columnHasInk && !active) topProtrusions += 1;
+      active = columnHasInk;
+    }
+  }
+  if (topProtrusions > 4) topProtrusions = 0;
+  return { aspectRatio, shape, interiorVerticalGap, hasTopBar, topProtrusions,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
@@ -719,7 +734,12 @@ export default function TDesignSmartPage() {
       controller.abort();
     }, 70000);
     try {
-      const generationContext = resolveTDesignGenerationContext(concept, generationReferenceIcons);
+      // An uploaded image owns the geometry. The typed concept is only its label;
+      // matching it to a preset family can silently replace the pictured object.
+      const generationContext = resolveTDesignGenerationContext(
+        referenceImageBase64 ? '参考图中的主体' : concept,
+        generationReferenceIcons
+      );
       if (referenceImageBase64 && referenceShapeAnalysis) {
         // Disconnected external strokes can sit outside the dominant component.
         // Their combined ratio cannot be inferred reliably from one pixel box.
@@ -728,9 +748,10 @@ export default function TDesignSmartPage() {
         generationContext.referenceShape = referenceShapeAnalysis.shape;
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
         generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
+        generationContext.referenceTopProtrusions = referenceShapeAnalysis.topProtrusions;
       }
       const prompt = buildTDesignGenerationPrompt({
-        concept: concept || '参考图中的主体',
+        concept: referenceImageBase64 ? '参考图中的主体' : concept,
         hasReferenceImage: Boolean(referenceImageBase64),
         cornerRadius,
         context: generationContext
