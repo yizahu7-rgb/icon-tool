@@ -33,6 +33,7 @@ export type TDesignGenerationContext = {
   referenceInteriorGap?: number;
   referenceHasTopBar?: boolean;
   referenceTopProtrusions?: number;
+  referenceFrameAspectRatio?: number;
 };
 
 type GenerationPromptOptions = {
@@ -441,12 +442,13 @@ DRAWING SYSTEM
 - Choose one centered keyline by visual body: horizontal 26×22, square 24×24, vertical 22×26, or circular/sparse 28×28.
 - For an uploaded icon reference, match the actual outer silhouette's width-to-height ratio. A nearly square frame must stay nearly square; do not turn it into a narrow portrait frame. Preserve the exact count and placement of internal bars, arrows, and other meaningful marks.
 ${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 15% of this ratio.` : ''}
-${context?.referenceShape ? `- Classified uploaded-reference outer silhouette: ${context.referenceShape}. ${context.referenceShape === 'square' ? 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
+${context?.referenceShape ? `- Classified uploaded-reference main body: ${context.referenceShape}. ${context.referenceShape === 'square' ? context.referenceTopProtrusions ? 'Use a square 24×24 keyline for the rectangular frame itself; attached top marks may extend about 2 units above the frame. Do not fit the frame and protrusions into the same 24×24 box.' : 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
 ${hasReferenceImage ? '- For every rectangular frame in the reference, including frames with tabs, handles, or other attached parts, draw each adjustable exterior corner as a true right-angle vertex. Never use short diagonal bevels in place of rounded corners. Keep attached parts as separate structural strokes; the UI applies the requested radius to the frame later.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
 ${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
 ${context?.referenceTopProtrusions ? `- The reference has ${context.referenceTopProtrusions} distinct short protrusions above its top frame stroke. Preserve their count and positions; do not replace them with a lid, inner dots, or a different object.` : ''}
-- Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames target 24×24; sparse open or fragmented near-square silhouettes target the 28×28 sparse keyline. Horizontal and vertical silhouettes target 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
+${context?.referenceFrameAspectRatio ? `- The rectangular frame itself has a measured width/height ratio of ${context.referenceFrameAspectRatio.toFixed(2)}. Preserve this ratio while fitting within the square keyline; do not force its width and height to be equal.` : ''}
+- Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames fit within 24×24 while keeping the reference frame ratio; sparse open or fragmented near-square silhouettes use the 28×28 sparse keyline. Horizontal and vertical silhouettes fit within 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
 - Use editable centerline paths, not expanded or filled stroke silhouettes.
@@ -698,16 +700,60 @@ export const validateTDesignGeneratedIcon = (
     if (context && !context.family?.geometry) {
       const outer = measuredGroups.get('stroke1');
       const detail = measuredGroups.get('stroke2');
-      const bounds = outer && (context.referenceShape === 'square'
+      let bounds = outer && (context.referenceShape === 'square'
         || context.referenceShape === 'horizontal-rectangle'
         || context.referenceShape === 'vertical-rectangle'
         || context.referenceShape === 'circle')
         ? outer : outer && detail ? mergeMeasuredBoxes(outer, detail) : outer;
       if (bounds && bounds.width > 0 && bounds.height > 0) {
+        let frameBounds: MeasuredBox | undefined;
+        if (context.referenceShape === 'square' && context.referenceTopProtrusions) {
+          for (const sourcePath of Array.from(root.querySelectorAll('#stroke1 path'))) {
+            const closedSubpaths = (sourcePath.getAttribute('d') || '').match(/M[^M]*?Z/g) || [];
+            for (const data of closedSubpaths) {
+              const probe = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              probe.setAttribute('d', data);
+              measurementSvg.appendChild(probe);
+              const box = probe.getBBox();
+              probe.remove();
+              if (box.width >= 8 && box.height >= 8 && box.width / box.height >= 0.8
+                && box.width / box.height <= 1.25
+                && (!frameBounds || box.width * box.height > frameBounds.width * frameBounds.height)) {
+                frameBounds = { x: box.x, y: box.y, width: box.width, height: box.height };
+              }
+            }
+          }
+        }
+        if (frameBounds && context.referenceFrameAspectRatio) {
+          const correction = context.referenceFrameAspectRatio / (frameBounds.width / frameBounds.height);
+          if (Math.abs(correction - 1) > 0.04 && correction >= 0.8 && correction <= 1.2) {
+            const frameCenterX = frameBounds.x + frameBounds.width / 2;
+            const matrix = { a: correction, b: 0, c: 0, d: 1,
+              e: frameCenterX * (1 - correction), f: 0 };
+            const sourcePaths = Array.from(root.querySelectorAll('path'));
+            const measured = Array.from(measurementSvg.querySelectorAll('path'));
+            sourcePaths.forEach((path, index) => {
+              if (path.parentElement?.getAttribute('id') !== 'stroke1') return;
+              const data = transformMasterGoPath(path.getAttribute('d') || '', matrix);
+              path.setAttribute('d', data);
+              measured[index].setAttribute('d', data);
+            });
+            frameBounds = { ...frameBounds,
+              x: frameCenterX + (frameBounds.x - frameCenterX) * correction,
+              width: frameBounds.width * correction };
+            measuredGroups.clear();
+            sourcePaths.forEach((path, index) => {
+              const box = measured[index].getBBox();
+              measuredGroups.set(path.parentElement?.getAttribute('id') || '',
+                mergeMeasuredBoxes(measuredGroups.get(path.parentElement?.getAttribute('id') || ''), box));
+            });
+            bounds = measuredGroups.get('stroke1') || bounds;
+          }
+        }
         const aspect = bounds.width / bounds.height;
         const hasOpenOuterStroke = Array.from(root.querySelectorAll('#stroke1 path'))
           .some((path) => !/Z\s*$/.test(path.getAttribute('d') || ''));
-        const keyline = context.referenceShape === 'square' ? { width: 24, height: 24 }
+        const keyline = context.referenceShape === 'square' ? { width: 24, height: context.referenceTopProtrusions ? 26 : 24 }
           : context.referenceShape === 'horizontal-rectangle' ? { width: 26, height: 22 }
             : context.referenceShape === 'vertical-rectangle' ? { width: 22, height: 26 }
               : context.referenceShape === 'circle' ? { width: 28, height: 28 }
@@ -718,7 +764,14 @@ export const validateTDesignGeneratedIcon = (
                     : hasOpenOuterStroke ? { width: 28, height: 28 } : { width: 24, height: 24 };
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
-        const targetScale = Math.min(keyline.width / bounds.width, keyline.height / bounds.height);
+        const frameRatio = context.referenceFrameAspectRatio || 1;
+        const frameTarget = frameRatio >= 1
+          ? { width: 24, height: 24 / frameRatio }
+          : { width: 24 * frameRatio, height: 24 };
+        const targetScale = frameBounds
+          ? Math.min(frameTarget.width / frameBounds.width, frameTarget.height / frameBounds.height,
+            28 / bounds.width, 28 / bounds.height)
+          : Math.min(keyline.width / bounds.width, keyline.height / bounds.height);
         const scale = targetScale > 1.02 ? targetScale : 1;
         if (scale > 1 || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
           const matrix = { a: scale, b: 0, c: 0, d: scale,
@@ -924,18 +977,43 @@ export const validateTDesignGeneratedIcon = (
         }).sort((a, b) => a[0] - b[0])[0]?.[0];
         if (topRow !== undefined) {
           const topY = topRow / 2;
-          const columns = new Set(stroke1Points.filter((point) => point.y < topY - 0.5
+          if (context.referenceShape === 'square') {
+            const frameHeight = stroke1Box.y + stroke1Box.height - topY;
+            const expectedRatio = context.referenceFrameAspectRatio || 1;
+            const expectedWidth = expectedRatio >= 1 ? 24 : 24 * expectedRatio;
+            const expectedHeight = expectedRatio >= 1 ? 24 / expectedRatio : 24;
+            if (Math.abs(stroke1Box.width - expectedWidth) > 1.5
+              || Math.abs(frameHeight - expectedHeight) > 1.5
+              || Math.abs(stroke1Box.width / frameHeight / expectedRatio - 1) > 0.1) {
+              return { ok: false, reason: `主体方框应按参考比例适配 ${expectedWidth.toFixed(1)}×${expectedHeight.toFixed(1)}，当前为 ${stroke1Box.width.toFixed(1)}×${frameHeight.toFixed(1)}；顶部凸耳另计` };
+            }
+            const outerPaths = Array.from(root.querySelectorAll('#stroke1 path'));
+            if (outerPaths.some((path) => {
+              const data = path.getAttribute('d') || '';
+              const box = (measuredPaths.get('stroke1') || [])[outerPaths.indexOf(path)]?.getBBox();
+              return box && box.width >= 18 && box.height >= 18 && /[ACQST]/.test(data);
+            })) {
+              return { ok: false, reason: '主体方框的圆角必须由页面参数控制，SVG 母版不能预先画入圆弧' };
+            }
+          }
+          const aboveTop = stroke1Points.filter((point) => point.y < topY - 0.1
             && point.x > stroke1Box.x + stroke1Box.width * 0.1
-            && point.x < stroke1Box.x + stroke1Box.width * 0.9)
-            .map((point) => Math.round(point.x * 2)));
+            && point.x < stroke1Box.x + stroke1Box.width * 0.9);
+          const columns = new Set(aboveTop.map((point) => Math.round(point.x * 2)));
           let protrusions = 0;
           let previous = -Infinity;
+          const groups: number[][] = [];
           for (const column of [...columns].sort((a, b) => a - b)) {
-            if (column - previous > 1) protrusions += 1;
+            if (column - previous > 1) { protrusions += 1; groups.push([]); }
+            groups[groups.length - 1].push(column);
             previous = column;
           }
           if (protrusions !== context.referenceTopProtrusions) {
             return { ok: false, reason: `参考图顶部有 ${context.referenceTopProtrusions} 个凸耳，生成图却有 ${protrusions} 个` };
+          }
+          if (groups.some((group) => !aboveTop.some((point) =>
+            point.y >= topY - 0.5 && group.includes(Math.round(point.x * 2))))) {
+            return { ok: false, reason: '顶部凸耳必须连接外框横线，不能悬空' };
           }
         }
       }
@@ -949,7 +1027,7 @@ export const validateTDesignGeneratedIcon = (
           : context?.referenceShape === 'circle'
             ? { width: 28, height: 28 }
             : undefined;
-    if (referenceKeyline && stroke1Box && !context?.family?.geometry) {
+    if (referenceKeyline && stroke1Box && !context?.family?.geometry && !context?.referenceTopProtrusions) {
       const widthError = Math.abs(stroke1Box.width - referenceKeyline.width);
       const heightError = Math.abs(stroke1Box.height - referenceKeyline.height);
       const centerX = stroke1Box.x + stroke1Box.width / 2;

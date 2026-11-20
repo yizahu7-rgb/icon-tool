@@ -69,10 +69,11 @@ type ReferenceShapeAnalysis = {
   interiorVerticalGap?: number;
   hasTopBar: boolean;
   topProtrusions: number;
+  frameAspectRatio?: number;
   subjectBounds: { x: number; y: number; width: number; height: number };
 };
 
-const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): ReferenceShapeAnalysis | undefined => {
+export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): ReferenceShapeAnalysis | undefined => {
   const { width, height } = canvas;
   const pixels = context.getImageData(0, 0, width, height).data;
   const corners = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]];
@@ -214,7 +215,11 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
     }
   }
   if (topProtrusions > 4) topProtrusions = 0;
-  return { aspectRatio, shape, interiorVerticalGap, hasTopBar, topProtrusions,
+  const frameRatio = topBarY >= 0 ? boxWidth / (maxY - topBarY + 1) : 0;
+  const frameShape = hasTopBar && topProtrusions > 0 && frameRatio >= 0.85 && frameRatio <= 1.18
+    ? 'square' : shape;
+  return { aspectRatio, shape: frameShape, interiorVerticalGap, hasTopBar, topProtrusions,
+    frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
@@ -749,6 +754,7 @@ export default function TDesignSmartPage() {
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
         generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
         generationContext.referenceTopProtrusions = referenceShapeAnalysis.topProtrusions;
+        generationContext.referenceFrameAspectRatio = referenceShapeAnalysis.frameAspectRatio;
       }
       const prompt = buildTDesignGenerationPrompt({
         concept: referenceImageBase64 ? '参考图中的主体' : concept,
