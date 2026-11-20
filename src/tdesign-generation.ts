@@ -707,15 +707,17 @@ export const validateTDesignGeneratedIcon = (
         ? outer : outer && detail ? mergeMeasuredBoxes(outer, detail) : outer;
       if (bounds && bounds.width > 0 && bounds.height > 0) {
         const aspect = bounds.width / bounds.height;
+        const hasOpenOuterStroke = Array.from(root.querySelectorAll('#stroke1 path'))
+          .some((path) => !/Z\s*$/.test(path.getAttribute('d') || ''));
         const keyline = context.referenceShape === 'square' ? { width: 24, height: 24 }
           : context.referenceShape === 'horizontal-rectangle' ? { width: 26, height: 22 }
             : context.referenceShape === 'vertical-rectangle' ? { width: 22, height: 26 }
               : context.referenceShape === 'circle' ? { width: 28, height: 28 }
                 : aspect > 1.25 ? { width: 26, height: 22 }
                   : aspect < 0.8 ? { width: 22, height: 26 }
-                    // An open or fragmented near-square silhouette has less ink
-                    // than a closed square frame. Use the sparse 28px keyline.
-                    : { width: 28, height: 28 };
+                    // Open outlines carry less ink than closed near-square
+                    // silhouettes and need the larger sparse keyline.
+                    : hasOpenOuterStroke ? { width: 28, height: 28 } : { width: 24, height: 24 };
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
         const targetScale = Math.min(keyline.width / bounds.width, keyline.height / bounds.height);
