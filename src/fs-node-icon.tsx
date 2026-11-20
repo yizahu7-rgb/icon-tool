@@ -504,11 +504,11 @@ export const straightenFrameCornerBevels = (value: string): string | null => {
   let changed = false;
   const result = subpaths.map((subpath) => {
     const commands = parseAdjustablePath(subpath);
+    const isClosed = commands?.[commands.length - 1]?.type === 'Z';
     if (!commands || commands[0]?.type !== 'M'
-      || commands[commands.length - 1]?.type !== 'Z'
-      || commands.slice(1, -1).some((command) => command.type !== 'L')) return subpath;
-    const vertices = commands.slice(0, -1).map((command) => command.end);
-    if (vertices.length < 6) return subpath;
+      || commands.slice(1, isClosed ? -1 : undefined).some((command) => command.type !== 'L')) return subpath;
+    const vertices = commands.slice(0, isClosed ? -1 : undefined).map((command) => command.end);
+    if (vertices.length < 5) return subpath;
     const left = Math.min(...vertices.map(([x]) => x));
     const right = Math.max(...vertices.map(([x]) => x));
     const top = Math.min(...vertices.map(([, y]) => y));
@@ -521,6 +521,7 @@ export const straightenFrameCornerBevels = (value: string): string | null => {
     const removed = new Set<number>();
     const replaced = new Map<number, Point>();
     for (let i = 0; i < vertices.length; i += 1) {
+      if (!isClosed && (i === 0 || i + 2 >= vertices.length)) continue;
       const previousIndex = (i - 1 + vertices.length) % vertices.length;
       const nextIndex = (i + 1) % vertices.length;
       const afterIndex = (i + 2) % vertices.length;
@@ -549,7 +550,7 @@ export const straightenFrameCornerBevels = (value: string): string | null => {
     const output = vertices.flatMap((vertex, index) => removed.has(index)
       ? [] : [replaced.get(index) || vertex]);
     return `M${format(output[0][0])} ${format(output[0][1])}${output.slice(1)
-      .map(([x, y]) => ` L${format(x)} ${format(y)}`).join('')} Z`;
+      .map(([x, y]) => ` L${format(x)} ${format(y)}`).join('')}${isClosed ? ' Z' : ''}`;
   });
   return changed ? result.join(' ') : null;
 };

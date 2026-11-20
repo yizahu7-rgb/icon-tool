@@ -1,5 +1,5 @@
 import type { TDesignIcon } from './tdesign-icons';
-import { straightenBeveledRectanglePath, straightenFrameCornerBevels, transformMasterGoPath } from './fs-node-icon';
+import { straightenFrameCornerBevels, transformMasterGoPath } from './fs-node-icon';
 
 export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.10';
 
@@ -31,6 +31,7 @@ export type TDesignGenerationContext = {
   referenceAspectRatio?: number;
   referenceShape?: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
   referenceInteriorGap?: number;
+  referenceHasTopBar?: boolean;
 };
 
 type GenerationPromptOptions = {
@@ -442,6 +443,7 @@ ${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette widt
 ${context?.referenceShape ? `- Classified uploaded-reference outer silhouette: ${context.referenceShape}. ${context.referenceShape === 'square' ? 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
 ${hasReferenceImage ? '- For every rectangular frame in the reference, including frames with tabs, handles, or other attached parts, draw each adjustable exterior corner as a true right-angle vertex. Never use short diagonal bevels in place of rounded corners. Keep attached parts as separate structural strokes; the UI applies the requested radius to the frame later.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
+${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
 - Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames target 24×24; sparse open or fragmented near-square silhouettes target the 28×28 sparse keyline. Horizontal and vertical silhouettes target 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
@@ -656,16 +658,6 @@ export const validateTDesignGeneratedIcon = (
         const straightenedCorners = straightenFrameCornerBevels(pathData);
         if (straightenedCorners) path.setAttribute('d', straightenedCorners);
       }
-      if (id === 'stroke1' && context?.referenceShape
-        && ['square', 'horizontal-rectangle', 'vertical-rectangle'].includes(context.referenceShape)) {
-        const expected = context.referenceShape === 'square'
-          ? { x: 4, y: 4, width: 24, height: 24 }
-          : context.referenceShape === 'horizontal-rectangle'
-            ? { x: 3, y: 5, width: 26, height: 22 }
-            : { x: 5, y: 3, width: 22, height: 26 };
-        const straightened = straightenBeveledRectanglePath(path.getAttribute('d') || pathData, expected);
-        if (straightened) path.setAttribute('d', straightened);
-      }
     }
   }
   if (!groupIds.has('stroke1')) return { ok: false, reason: '缺少外轮廓 stroke1 图层' };
@@ -733,13 +725,6 @@ export const validateTDesignGeneratedIcon = (
           const measured = Array.from(measurementSvg.querySelectorAll('path'));
           sourcePaths.forEach((path, index) => {
             let data = transformMasterGoPath(path.getAttribute('d') || '', matrix);
-            if (path.parentElement?.getAttribute('id') === 'stroke1') {
-              const expected = context.referenceShape === 'square' ? { x: 4, y: 4, width: 24, height: 24 }
-                : context.referenceShape === 'horizontal-rectangle' ? { x: 3, y: 5, width: 26, height: 22 }
-                  : context.referenceShape === 'vertical-rectangle' ? { x: 5, y: 3, width: 22, height: 26 }
-                    : null;
-              if (expected) data = straightenBeveledRectanglePath(data, expected) || data;
-            }
             path.setAttribute('d', data);
             measured[index].setAttribute('d', data);
           });
@@ -914,6 +899,20 @@ export const validateTDesignGeneratedIcon = (
 
     const stroke1Box = measuredGroups.get('stroke1');
     const stroke2Box = measuredGroups.get('stroke2');
+    if (context?.referenceHasTopBar && stroke1Box) {
+      const rows = new Map<number, number[]>();
+      for (const point of stroke1Points) {
+        if (point.y > stroke1Box.y + stroke1Box.height * 0.4) continue;
+        const row = Math.round(point.y * 2);
+        rows.set(row, [...(rows.get(row) || []), point.x]);
+      }
+      const continuousTop = [...rows.values()].some((points) => {
+        points.sort((a, b) => a - b);
+        return points.length > 1 && points[points.length - 1] - points[0] >= stroke1Box.width * 0.55
+          && points.every((x, index) => index === 0 || x - points[index - 1] <= 1);
+      });
+      if (!continuousTop) return { ok: false, reason: '参考图顶部有连续横线，生成外框不能缺失中间横线' };
+    }
     const referenceKeyline = context?.referenceShape === 'square'
       ? { width: 24, height: 24 }
       : context?.referenceShape === 'horizontal-rectangle'

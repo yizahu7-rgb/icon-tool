@@ -67,6 +67,7 @@ type ReferenceShapeAnalysis = {
   aspectRatio: number;
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
   interiorVerticalGap?: number;
+  hasTopBar: boolean;
   subjectBounds: { x: number; y: number; width: number; height: number };
 };
 
@@ -190,7 +191,15 @@ const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: CanvasRenderi
   const interiorVerticalGap = visibleGap > 0
     ? Math.max(3.5, Math.min(6, visibleGap * (shape === 'square' ? 24 : 26) / boxHeight + 2))
     : undefined;
-  return { aspectRatio, shape, interiorVerticalGap,
+  let hasTopBar = false;
+  for (let y = minY; y <= minY + boxHeight * 0.4 && !hasTopBar; y += 1) {
+    let run = 0;
+    for (let x = minX; x <= maxX; x += 1) {
+      run = foreground[y * width + x] ? run + 1 : 0;
+      if (run >= boxWidth * 0.55) { hasTopBar = true; break; }
+    }
+  }
+  return { aspectRatio, shape, interiorVerticalGap, hasTopBar,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
@@ -653,7 +662,7 @@ export default function TDesignSmartPage() {
         setReferenceShapeAnalysis(analysis);
         if (analysis) {
           const { x, y, width, height } = analysis.subjectBounds;
-          const padding = Math.max(4, Math.round(Math.max(width, height) * 0.12));
+          const padding = Math.max(6, Math.round(Math.max(width, height) * 0.2));
           const left = Math.max(0, x - padding);
           const top = Math.max(0, y - padding);
           const right = Math.min(canvas.width, x + width + padding);
@@ -707,6 +716,7 @@ export default function TDesignSmartPage() {
           ? undefined : referenceShapeAnalysis.aspectRatio;
         generationContext.referenceShape = referenceShapeAnalysis.shape;
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
+        generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
       }
       const prompt = buildTDesignGenerationPrompt({
         concept: concept || '参考图中的主体',
