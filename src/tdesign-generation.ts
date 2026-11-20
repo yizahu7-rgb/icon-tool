@@ -442,7 +442,7 @@ ${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette widt
 ${context?.referenceShape ? `- Classified uploaded-reference outer silhouette: ${context.referenceShape}. ${context.referenceShape === 'square' ? 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
 ${context?.referenceShape && ['square', 'horizontal-rectangle', 'vertical-rectangle'].includes(context.referenceShape) ? '- A rounded rectangular reference must become a true four-corner, right-angle rectangle in the editable SVG master. Include all four actual corner vertices. Never replace rounded corners with chamfers, bevels, clipped diagonals, or an octagonal outline. The UI applies the requested corner radius later.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
-- The complete visible geometry must have at least a 24-unit dominant dimension and be centered near (16,16). Do not return a small drawing surrounded by empty artboard space. Keep the chosen object's proportions; a thin object may have a smaller minor dimension.
+- Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames target 24×24; sparse open or fragmented near-square silhouettes target the 28×28 sparse keyline. Horizontal and vertical silhouettes target 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
 - Use editable centerline paths, not expanded or filled stroke silhouettes.
@@ -713,12 +713,14 @@ export const validateTDesignGeneratedIcon = (
               : context.referenceShape === 'circle' ? { width: 28, height: 28 }
                 : aspect > 1.25 ? { width: 26, height: 22 }
                   : aspect < 0.8 ? { width: 22, height: 26 }
-                    : { width: 24, height: 24 };
+                    // An open or fragmented near-square silhouette has less ink
+                    // than a closed square frame. Use the sparse 28px keyline.
+                    : { width: 28, height: 28 };
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
-        const undersized = Math.max(bounds.width, bounds.height) < 23.5;
-        if (undersized || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
-          const scale = undersized ? Math.min(keyline.width / bounds.width, keyline.height / bounds.height) : 1;
+        const targetScale = Math.min(keyline.width / bounds.width, keyline.height / bounds.height);
+        const scale = targetScale > 1.02 ? targetScale : 1;
+        if (scale > 1 || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
           const matrix = { a: scale, b: 0, c: 0, d: scale,
             e: 16 - centerX * scale, f: 16 - centerY * scale };
           const sourcePaths = Array.from(root.querySelectorAll('path'));
