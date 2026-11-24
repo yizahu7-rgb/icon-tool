@@ -4,7 +4,7 @@ import { straightenFrameCornerBevels, transformMasterGoPath } from './fs-node-ic
 export const TDESIGN_GENERATION_STANDARD_VERSION = 'TDESIGN-V2-32-2026.10';
 
 export type TDesignGenerationReference = Pick<TDesignIcon, 'name' | 'label' | 'keywords' | 'viewBox' | 'body'> & {
-  source: 'TDesign Icons official';
+  source: 'Current icon library';
 };
 
 type TDesignGenerationFamily = {
@@ -288,6 +288,7 @@ const resolveGenerationFamily = (concept: string): TDesignGenerationFamily | und
 };
 
 const semanticExpansions = [
+  { when: /订单|夹板|清单/, terms: ['task', 'assignment', 'clipboard', '任务', '夹板'] },
   { when: /分配|派发|调拨|调配/, terms: ['arrow-left-right-circle', 'swap', '交换', '左右箭头循环'] },
   { when: /加密|锁定|安全/, terms: ['locked', 'lock', '锁定', '安全'] },
   { when: /解密|解锁/, terms: ['unlocked', 'unlock', '解锁'] },
@@ -366,14 +367,14 @@ export const resolveTDesignGenerationContext = (
     .filter(({ icon }) => !excludedNames.has(icon.name))
     .filter(({ score }) => score >= 38)
     .sort((left, right) => right.score - left.score || left.icon.name.localeCompare(right.icon.name))
-    .slice(0, family ? 3 : 2)
+    .slice(0, family ? 3 : 4)
     .map(({ icon }): TDesignGenerationReference => ({
       name: icon.name,
       label: icon.label,
       keywords: icon.keywords,
       viewBox: icon.viewBox,
       body: icon.body,
-      source: 'TDesign Icons official'
+      source: 'Current icon library'
     }));
 
   return {
@@ -405,7 +406,7 @@ const formatGenerationContext = (context?: TDesignGenerationContext) => {
 - Source viewBox: ${reference.viewBox}
 - Source SVG body (topology reference only):
 ${reference.body}`).join('\n\n')
-    : 'No same-semantic TDesign reference matched.';
+    : 'No same-semantic icon in the current library matched the supplied label.';
 
   return `${familySection}
 
@@ -426,9 +427,9 @@ export const buildTDesignGenerationPrompt = ({
     : `Use the approved reference context below before drawing. Do not invent a new metaphor when a family master or same-semantic reference exists.`;
 
   const referenceContext = hasReferenceImage
-    ? `${formatGenerationContext(context ? { ...context, references: [] } : undefined)}
+    ? `${formatGenerationContext(context)}
 
-The user-provided icon is the structural source. Other same-name library icons must not replace its silhouette or internal marks. A locked family master still governs geometry where applicable.`
+Search the current icon library candidates first. Compare each candidate's silhouette, openings, attached parts, and internal marks with the uploaded image. If one matches, copy its existing geometry as the starting drawing, preserve the matching strokes, and redraw only the differing parts on the 32×32 v2 master. A shared name alone is not a match. If none matches visually, draw from the uploaded image. The uploaded image decides the final topology and no library candidate may replace a visible part with a different metaphor.`
     : formatGenerationContext(context);
 
   return `You are an SVG icon engineer. Create one editable outline icon following ${TDESIGN_GENERATION_STANDARD_VERSION}.

@@ -7,7 +7,7 @@ const loadExports = (source) => {
   const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
-  const sandbox = { exports: {} };
+  const sandbox = { exports: {}, require: () => ({}) };
   runInNewContext(compiled, sandbox);
   return sandbox.exports;
 };
@@ -21,6 +21,21 @@ const { analyzeReferenceShape } = loadExports(analysisSource);
 const { straightenFrameCornerBevels } = loadExports(
   readFileSync(new URL('../src/fs-node-icon.tsx', import.meta.url), 'utf8')
 );
+const { resolveTDesignGenerationContext, buildTDesignGenerationPrompt } = loadExports(
+  readFileSync(new URL('../src/tdesign-generation.ts', import.meta.url), 'utf8')
+);
+
+const libraryMatch = resolveTDesignGenerationContext('订单', [
+  { name: 'task', label: '任务', keywords: ['订单', '夹板'], viewBox: '0 0 24 24',
+    body: '<path id="stroke1" d="M8 6H4V22H20V6H16" />' },
+  { name: 'unrelated', label: '月亮', keywords: [], viewBox: '0 0 24 24', body: '<path d="M1 1" />' }
+]);
+assert.equal(libraryMatch.references[0]?.name, 'task');
+const libraryPrompt = buildTDesignGenerationPrompt({ concept: '订单', hasReferenceImage: true,
+  cornerRadius: 0, context: { ...libraryMatch, family: undefined } });
+assert.match(libraryPrompt, /M8 6H4V22H20V6H16/,
+  'uploaded-reference prompts must include matching current-library geometry');
+assert.match(libraryPrompt, /copy its existing geometry as the starting drawing/);
 
 const makeImage = () => {
   const width = 128;

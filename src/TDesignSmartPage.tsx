@@ -780,12 +780,16 @@ export default function TDesignSmartPage() {
       controller.abort();
     }, 70000);
     try {
-      // An uploaded image owns the geometry. The typed concept is only its label;
-      // matching it to a preset family can silently replace the pictured object.
-      const generationContext = resolveTDesignGenerationContext(
-        referenceImageBase64 ? '参考图中的主体' : concept,
-        generationReferenceIcons
+      // Search the current library before drawing. With an uploaded image the
+      // matching icon is a starting geometry, while the image decides which
+      // strokes must be retained or changed; a preset cannot override it.
+      const matchedContext = resolveTDesignGenerationContext(
+        concept || '参考图中的主体',
+        [...generationReferenceIcons, ...generatedIcons]
       );
+      const generationContext = referenceImageBase64
+        ? { ...matchedContext, family: undefined }
+        : matchedContext;
       if (referenceImageBase64 && referenceShapeAnalysis) {
         // Disconnected external strokes can sit outside the dominant component.
         // Their combined ratio cannot be inferred reliably from one pixel box.
@@ -802,7 +806,7 @@ export default function TDesignSmartPage() {
         generationContext.referenceInteriorSizeRatio = referenceShapeAnalysis.interiorSizeRatio;
       }
       const prompt = buildTDesignGenerationPrompt({
-        concept: referenceImageBase64 ? '参考图中的主体' : concept,
+        concept: concept || '参考图中的主体',
         hasReferenceImage: Boolean(referenceImageBase64),
         cornerRadius,
         context: generationContext
