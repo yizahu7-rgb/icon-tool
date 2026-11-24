@@ -499,7 +499,10 @@ export const straightenBeveledRectanglePath = (
 
 /** Straightens short bevels at the corners of a rectangular frame without
  * replacing its other strokes (for example a calendar's top tabs). */
-export const straightenFrameCornerBevels = (value: string): string | null => {
+export const straightenFrameCornerBevels = (
+  value: string,
+  options?: { preserveTopDiagonals?: boolean }
+): string | null => {
   const subpaths = value.trim().split(/(?=M)/).filter(Boolean);
   let changed = false;
   const result = subpaths.map((subpath) => {
@@ -540,6 +543,9 @@ export const straightenFrameCornerBevels = (value: string): string | null => {
         || beforeLength < Math.min(width, height) * 0.18
         || afterLength < Math.min(width, height) * 0.18) continue;
       const corner: Point = entering === 'v' ? [start[0], end[1]] : [end[0], start[1]];
+      // A short diagonal above the body may be a lid/roof edge. The reference
+      // topology decides whether upper bevels are safe to normalize.
+      if (options?.preserveTopDiagonals && corner[1] <= top + height * 0.38) continue;
       if (Math.min(Math.abs(corner[0] - left), Math.abs(corner[0] - right)) > 0.75
         || (corner[1] > top + height * 0.38 && corner[1] < bottom - height * 0.38)) continue;
       replaced.set(i, corner);

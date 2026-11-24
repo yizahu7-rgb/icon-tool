@@ -30,6 +30,8 @@ export type TDesignGenerationContext = {
   stroke2Role: 'core-detail' | 'state-symbol';
   referenceAspectRatio?: number;
   referenceShape?: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
+  referenceHasFullRectangularFrame?: boolean;
+  referenceHasSingleConnectedSubject?: boolean;
   referenceInteriorGap?: number;
   referenceHasTopBar?: boolean;
   referenceTopProtrusions?: number;
@@ -444,7 +446,9 @@ DRAWING SYSTEM
 - For an uploaded icon reference, match the actual outer silhouette's width-to-height ratio. A nearly square frame must stay nearly square; do not turn it into a narrow portrait frame. Preserve the exact count and placement of internal bars, arrows, and other meaningful marks.
 ${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 15% of this ratio.` : ''}
 ${context?.referenceShape ? `- Classified uploaded-reference main body: ${context.referenceShape}. ${context.referenceShape === 'square' ? context.referenceTopProtrusions ? 'Use a square 24×24 keyline for the rectangular frame itself; attached top marks may extend about 2 units above the frame. Do not fit the frame and protrusions into the same 24×24 box.' : 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
-${hasReferenceImage ? '- For every rectangular frame in the reference, including frames with tabs, handles, or other attached parts, draw each adjustable exterior corner as a true right-angle vertex. Never use short diagonal bevels in place of rounded corners. Keep attached parts as separate structural strokes; the UI applies the requested radius to the frame later.' : ''}
+${hasReferenceImage ? '- Classify topology separately from the keyline: a square-sized icon can contain a sloped lid, roof, or perspective face. Convert rounded corners of actual adjustable rectangular edges to right-angle vertices, regardless of the reference corner radius. Preserve structural diagonal edges and openings; never turn them into rectangle corners. The UI applies the requested radius later.' : ''}
+${context?.referenceHasFullRectangularFrame ? '- The reference has a full rectangular outer frame: all four adjustable frame corners must be right-angle vertices in the SVG master, even if the bitmap shows rounding.' : ''}
+${context?.referenceHasSingleConnectedSubject ? '- The uploaded icon is one connected ink component. Any nodes or marks that touch the outer structure belong to stroke1 with it; do not split them into stroke2 and then add a gap that changes the reference topology.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
 ${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
 ${context?.referenceTopProtrusions ? `- The reference has ${context.referenceTopProtrusions} distinct short protrusions above its top frame stroke. Preserve their count and positions; do not replace them with a lid, inner dots, or a different object.` : ''}
@@ -465,10 +469,10 @@ ${hasReferenceImage ? '- Keep all visible icon strokes, even short ones. Do not 
 SEMANTIC LAYERS
 - Put every external silhouette and outer structural line in one <g id="stroke1">.
 - Put internal symbols, holes, dividers, letters, dots, status marks, and decorative details in one optional <g id="stroke2">.
-- Internal details must be separate from stroke1 so global corner editing can affect only the exterior.
+- Disconnected internal details belong in stroke2. Core nodes or marks that intentionally touch the outer structure belong in stroke1; their intrinsic circles remain unchanged by corner editing.
 - Size and position the complete stroke2 bounding box inside the subject's effective interior cavity, excluding roofs, perspective faces, openings, seams, and corners. By default, neither stroke2 dimension may exceed 50% of the corresponding stroke1 dimension unless a locked family rule explicitly says otherwise.
 - Geometrically center the complete state symbol first, including the arrowhead, wings, and shaft or both strokes of a cross. Only then apply at most a 0.5-unit optical correction. Never center only the shaft, one diagonal, or the path start point.
-- Unless a semantic connection is explicit, stroke2 symbols must not intersect or touch stroke1. At the default 2-unit stroke, keep a visible 1.5–2.5-unit gap (normally 3.5–4.5 units between centerlines), using 0.5-unit increments.
+- Unless a semantic connection is explicit, stroke2 symbols must not intersect or touch stroke1. Put intentionally connected geometry in stroke1. At the default 2-unit stroke, detached symbols need a visible 1.5–2.5-unit gap (normally 3.5–4.5 units between centerlines), using 0.5-unit increments.
 - Measure the layer gap as the true two-dimensional shortest distance across every segment, endpoint, and curve, including diagonal-to-diagonal distances. Any centerline gap below 3.5 units is invalid even when the two bounding boxes do not overlap.
 - Preserve foreground/background order with explicit path breaks. Whenever a foreground object overlaps a background outline, stop the covered background segments before the foreground boundary and resume them after it. Never draw a closed background outline and let its hidden edge pass through the middle of the foreground object; do not simulate occlusion with white fills, masks, or clipping.
 - Before answering, inspect every overlap at centerline level: no supposedly hidden background segment may remain visible inside or across the foreground object's silhouette.
@@ -661,7 +665,10 @@ export const validateTDesignGeneratedIcon = (
         if (reason) return { ok: false, reason: `生成路径的 ${reason}` };
       }
       if (id === 'stroke1') {
-        const straightenedCorners = straightenFrameCornerBevels(pathData);
+        const straightenedCorners = straightenFrameCornerBevels(pathData, {
+          preserveTopDiagonals: context?.referenceHasFullRectangularFrame === false
+            && !context.referenceTopProtrusions
+        });
         if (straightenedCorners) path.setAttribute('d', straightenedCorners);
       }
     }
@@ -829,7 +836,7 @@ export const validateTDesignGeneratedIcon = (
         }
       }
     }
-    const stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
+    let stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
     let stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
     // Historical localStorage entries are revalidated without generation context.
     // Preserve those records as-is; enforce the stricter inter-layer gap on every
@@ -837,6 +844,31 @@ export const validateTDesignGeneratedIcon = (
     if (context && stroke1Points.length && stroke2Points.length) {
       let minimumLayerGap = getMinimumPointDistance(stroke1Points, stroke2Points);
       const requiredLayerGap = geometry?.minimumLayerGap ?? MIN_LAYER_CENTERLINE_GAP;
+      // If the source is one connected ink component, a near-zero cross-layer
+      // distance usually means the model split attached core nodes into stroke2.
+      // Restore the source topology by putting those paths in the main layer.
+      if (!geometry && context.referenceHasSingleConnectedSubject
+        && context.stroke2Role === 'core-detail' && !context.referenceInteriorGap
+        && minimumLayerGap < 0.5) {
+        const outerGroup = root.querySelector('#stroke1');
+        const innerGroup = root.querySelector('#stroke2');
+        const innerPaths = Array.from(innerGroup?.querySelectorAll('path') || []);
+        if (outerGroup && innerGroup && innerPaths.length) {
+          innerPaths.forEach((path) => outerGroup.appendChild(path));
+          innerGroup.remove();
+          measuredPaths.set('stroke1', [
+            ...(measuredPaths.get('stroke1') || []),
+            ...(measuredPaths.get('stroke2') || [])
+          ]);
+          measuredPaths.delete('stroke2');
+          const innerBox = measuredGroups.get('stroke2');
+          if (innerBox) measuredGroups.set('stroke1', mergeMeasuredBoxes(measuredGroups.get('stroke1'), innerBox));
+          measuredGroups.delete('stroke2');
+          stroke1Points = [...stroke1Points, ...stroke2Points];
+          stroke2Points = [];
+          minimumLayerGap = Number.POSITIVE_INFINITY;
+        }
+      }
       if (minimumLayerGap < requiredLayerGap - 0.05 && !geometry) {
         const sourceDetails = Array.from(root.querySelectorAll('#stroke2 path'));
         const measuredDetails = measuredPaths.get('stroke2') || [];
@@ -867,10 +899,17 @@ export const validateTDesignGeneratedIcon = (
             const halfWidth = detailBox.width * scale / 2;
             const halfHeight = detailBox.height * scale / 2;
             const centers: Array<[number, number]> = [[centerX, centerY]];
-            // A status mark may move only a few units before its meaning and
-            // optical centering change. Limit the synchronous search accordingly.
+            // Search nearby half-unit positions first. If the source detail was
+            // placed against a tab or side wall, include a wider one-unit grid
+            // before declaring a reference-compatible placement impossible.
             for (let cy = Math.ceil((centerY - 3) * 2) / 2; cy <= centerY + 3; cy += 0.5) {
               for (let cx = Math.ceil((centerX - 3) * 2) / 2; cx <= centerX + 3; cx += 0.5) {
+                centers.push([cx, cy]);
+              }
+            }
+            for (let cy = Math.ceil(centerY - 7); cy <= centerY + 7; cy += 1) {
+              for (let cx = Math.ceil(centerX - 7); cx <= centerX + 7; cx += 1) {
+                if (Math.abs(cx - centerX) <= 3 && Math.abs(cy - centerY) <= 3) continue;
                 centers.push([cx, cy]);
               }
             }
@@ -1068,7 +1107,7 @@ export const validateTDesignGeneratedIcon = (
         || Math.abs(centerY - 16) > 1) {
         return { ok: false, reason: `参考图形状应使用 ${referenceKeyline.width}×${referenceKeyline.height} Keyline 并居中，当前外轮廓为 ${stroke1Box.width.toFixed(1)}×${stroke1Box.height.toFixed(1)}` };
       }
-      if (context?.referenceShape !== 'circle') {
+      if (context?.referenceHasFullRectangularFrame) {
         const corners = [
           { x: stroke1Box.x, y: stroke1Box.y },
           { x: stroke1Box.x + stroke1Box.width, y: stroke1Box.y },

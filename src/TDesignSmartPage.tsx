@@ -66,6 +66,8 @@ const generatedIconStorageKey = 'tdesign-v2-generated-icons';
 type ReferenceShapeAnalysis = {
   aspectRatio: number;
   shape: 'square' | 'horizontal-rectangle' | 'vertical-rectangle' | 'circle' | 'irregular';
+  hasFullRectangularFrame: boolean;
+  hasSingleConnectedSubject: boolean;
   interiorVerticalGap?: number;
   hasTopBar: boolean;
   topProtrusions: number;
@@ -167,11 +169,25 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
   };
   const hasRectangularOutline = sideSupport(true, false) && sideSupport(true, true)
     && sideSupport(false, false) && sideSupport(false, true);
+  // Keyline classification is about overall size. A sloped lid can still fit a
+  // square keyline, but its upper diagonal is not a rounded frame corner.
+  const hasEarlySideWall = (farSide: boolean) => [0.09, 0.13, 0.17].filter((fraction) => {
+    const y = minY + Math.round(fraction * (boxHeight - 1));
+    const edge = farSide ? maxX : minX;
+    const tolerance = Math.max(1, Math.round(boxWidth * 0.035));
+    for (let offset = 0; offset <= tolerance; offset += 1) {
+      const x = edge + (farSide ? -offset : offset);
+      if (foreground[y * width + x]) return true;
+    }
+    return false;
+  }).length >= 2;
+  const hasFullRectangularFrame = hasRectangularOutline
+    && hasEarlySideWall(false) && hasEarlySideWall(true);
   const shape = hasRectangularOutline
     ? aspectRatio >= 0.85 && aspectRatio <= 1.18 ? 'square'
       : aspectRatio > 1.18 ? 'horizontal-rectangle' : 'vertical-rectangle'
     : aspectRatio >= 0.85 && aspectRatio <= 1.18
-      && [0, 0.25, 0.5, 0.75].every((fraction) => {
+      && [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875].every((fraction) => {
         const angle = fraction * Math.PI * 2;
         const x = minX + Math.round((0.5 + 0.45 * Math.cos(angle)) * (boxWidth - 1));
         const y = minY + Math.round((0.5 + 0.45 * Math.sin(angle)) * (boxHeight - 1));
@@ -184,6 +200,11 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
   const interiorComponents = components.filter((component) => component !== subject
     && component.x > minX + 2 && component.right < maxX - 2
     && component.y > minY + 2 && component.bottom < maxY - 2);
+  const nearbyDetachedComponents = components.filter((component) => component !== subject
+    && component.right >= minX - boxWidth * 0.08
+    && component.x <= maxX + boxWidth * 0.08
+    && component.bottom >= minY - boxHeight * 0.08
+    && component.y <= maxY + boxHeight * 0.08);
   const bar = interiorComponents.filter((item) => (item.right - item.x + 1) >= boxWidth * 0.3
     && (item.right - item.x + 1) >= (item.bottom - item.y + 1) * 2
     && item.y < minY + boxHeight * 0.5)
@@ -227,7 +248,9 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
     && innerWidthRatio >= 0.1 && innerWidthRatio <= 0.75
     && innerHeightRatio >= 0.1 && innerHeightRatio <= 0.75
     ? { width: innerWidthRatio, height: innerHeightRatio } : undefined;
-  return { aspectRatio, shape: frameShape, interiorVerticalGap, hasTopBar, topProtrusions,
+  return { aspectRatio, shape: frameShape, hasFullRectangularFrame,
+    hasSingleConnectedSubject: nearbyDetachedComponents.length === 0,
+    interiorVerticalGap, hasTopBar, topProtrusions,
     frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined, interiorSizeRatio,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
@@ -760,6 +783,8 @@ export default function TDesignSmartPage() {
         generationContext.referenceAspectRatio = referenceShapeAnalysis.shape === 'irregular'
           ? undefined : referenceShapeAnalysis.aspectRatio;
         generationContext.referenceShape = referenceShapeAnalysis.shape;
+        generationContext.referenceHasFullRectangularFrame = referenceShapeAnalysis.hasFullRectangularFrame;
+        generationContext.referenceHasSingleConnectedSubject = referenceShapeAnalysis.hasSingleConnectedSubject;
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
         generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
         generationContext.referenceTopProtrusions = referenceShapeAnalysis.topProtrusions;
@@ -852,7 +877,10 @@ export default function TDesignSmartPage() {
       let validation = validateTDesignGeneratedIcon(generatedText, generationContext);
       if (!validation.ok && !generationContext.family?.presetSvg) {
         setGenerationPhase('正在修正图形…');
-        const correctionPrompt = `${prompt}\n\nPREVIOUS SVG (revise its geometry, do not return it unchanged):\n${generatedText}\n\nVALIDATION FAILURE: ${validation.reason}. Fix this specific measurement by moving or uniformly scaling the relevant geometry within the 32×32 artboard. Do not fix a spacing error by deleting a stroke or changing an opening. ${referenceImageBase64 ? 'Recheck the attached icon stroke by stroke: preserve every visible endpoint, disconnected segment, junction, gap, direction, and internal mark. Ignore any caption outside the icon.' : 'Keep the chosen semantic metaphor recognizable.'} If the reference has a rounded rectangular frame, draw its underlying master as a true rectangle with four right-angle vertices; do not use diagonal cut corners. The page applies the requested corner radius later.`;
+        const spacingCorrection = validation.reason.startsWith('stroke1 与 stroke2')
+          ? 'If the reference parts are intentionally attached, put the connected paths together in stroke1. Otherwise preserve the outer silhouette and uniformly shrink or reposition only the separate inner detail until there is enough visible space. Keep its direction and recognizable shape.'
+          : '';
+        const correctionPrompt = `${prompt}\n\nPREVIOUS SVG (revise its geometry, do not return it unchanged):\n${generatedText}\n\nVALIDATION FAILURE: ${validation.reason}. Fix this specific measurement by moving or uniformly scaling the relevant geometry within the 32×32 artboard. ${spacingCorrection} Do not fix a spacing error by deleting a stroke or changing an opening. ${referenceImageBase64 ? 'Recheck the attached icon stroke by stroke: preserve every visible endpoint, disconnected segment, junction, gap, direction, and internal mark. Ignore any caption outside the icon.' : 'Keep the chosen semantic metaphor recognizable.'} Straighten only rounded corners of actual adjustable rectangular edges. Preserve structural diagonals such as a sloped lid, roof, or perspective face. The page applies the requested corner radius later.`;
         const retryResponse = await fetch(useLocalModel ? '/local-model/v1/chat/completions' : '/api/generate-icon', {
           method: 'POST',
           signal: controller.signal,
@@ -882,7 +910,10 @@ export default function TDesignSmartPage() {
           if (typeof retryText === 'string') validation = validateTDesignGeneratedIcon(retryText, generationContext);
         }
       }
-      if (!validation.ok) throw new Error(`生成结果未通过规范校验：${validation.reason}`);
+      if (!validation.ok) {
+        console.warn('Icon generation validation failed after correction:', validation.reason);
+        throw new Error('图标暂未生成成功，系统已尝试自动修正。请再试一次。');
+      }
 
       const label = concept || '参考图图标';
       const newIcon: GeneratedTDesignIcon = {
