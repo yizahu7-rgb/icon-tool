@@ -35,6 +35,7 @@ export type TDesignGenerationContext = {
   referenceInteriorGap?: number;
   referenceHasTopBar?: boolean;
   referenceTopProtrusions?: number;
+  referenceHasCenteredTopTab?: boolean;
   referenceFrameAspectRatio?: number;
   referenceInteriorSizeRatio?: { width: number; height: number };
 };
@@ -450,7 +451,7 @@ ${hasReferenceImage ? '- Classify topology separately from the keyline: a square
 ${context?.referenceHasFullRectangularFrame ? '- The reference has a full rectangular outer frame: all four adjustable frame corners must be right-angle vertices in the SVG master, even if the bitmap shows rounding.' : ''}
 ${context?.referenceHasSingleConnectedSubject ? '- The uploaded icon is one connected ink component. Any nodes or marks that touch the outer structure belong to stroke1 with it; do not split them into stroke2 and then add a gap that changes the reference topology.' : ''}
 ${context?.referenceInteriorGap ? `- The reference has a separate upper horizontal bar and lower symbol. Draw them as disconnected subpaths. Keep at least ${context.referenceInteriorGap.toFixed(1)} units of centerline vertical separation between them on the 32×32 master; do not connect or crowd the arrow against the bar.` : ''}
-${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
+${context?.referenceHasCenteredTopTab ? '- A centered foreground tab covers the top of the outer frame. Draw the frame top as left and right segments ending at the tab sides; do not draw a hidden horizontal stroke through the tab. Keep the tab as a separate structural subpath in stroke1.' : context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
 ${context?.referenceTopProtrusions ? `- The reference has ${context.referenceTopProtrusions} distinct short protrusions above its top frame stroke. Preserve their count and positions; do not replace them with a lid, inner dots, or a different object.` : ''}
 ${context?.referenceFrameAspectRatio ? `- The rectangular frame itself has a measured width/height ratio of ${context.referenceFrameAspectRatio.toFixed(2)}. Preserve this ratio while fitting within the square keyline; do not force its width and height to be equal.` : ''}
 ${context?.referenceInteriorSizeRatio ? `- The reference's single internal motif occupies about ${(context.referenceInteriorSizeRatio.width * 100).toFixed(0)}% of the frame width and ${(context.referenceInteriorSizeRatio.height * 100).toFixed(0)}% of its height. Keep its full visible box, including any handle or shaft, at this relative size; do not enlarge it with the frame.` : ''}
@@ -1027,7 +1028,7 @@ export const validateTDesignGeneratedIcon = (
 
     const stroke1Box = measuredGroups.get('stroke1');
     const stroke2Box = measuredGroups.get('stroke2');
-    if (context?.referenceHasTopBar && stroke1Box) {
+    if (context?.referenceHasTopBar && !context.referenceHasCenteredTopTab && stroke1Box) {
       const rows = new Map<number, number[]>();
       for (const point of stroke1Points) {
         if (point.y > stroke1Box.y + stroke1Box.height * 0.4) continue;

@@ -82,12 +82,16 @@ assert.equal(ring.analyze()?.hasSingleConnectedSubject, true,
 const clipboard = makeImage();
 for (const [a, b] of [
   [[28, 24], [100, 24]], [[100, 24], [100, 108]],
-  [[100, 108], [28, 108]], [[28, 108], [28, 24]]
+  [[100, 108], [28, 108]], [[28, 108], [28, 24]],
+  [[52, 20], [76, 20]], [[52, 20], [52, 28]],
+  [[76, 20], [76, 28]], [[52, 28], [76, 28]]
 ]) clipboard.line(...a, ...b);
 clipboard.line(43, 65, 58, 80);
 clipboard.line(58, 80, 85, 51);
 assert.equal(clipboard.analyze()?.hasSingleConnectedSubject, false,
   'a separate check mark must keep its own spacing rule');
+assert.equal(clipboard.analyze()?.hasCenteredTopTab, true,
+  'a centered clipboard tab must interrupt the visible frame top');
 
 const slopedBoxPath = 'M4 10 L6 5 L26 5 L28 10 L28 25 L25 28 L7 28 L4 25 Z';
 const repaired = straightenFrameCornerBevels(slopedBoxPath, { preserveTopDiagonals: true });

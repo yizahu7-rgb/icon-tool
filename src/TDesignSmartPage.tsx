@@ -71,6 +71,7 @@ type ReferenceShapeAnalysis = {
   interiorVerticalGap?: number;
   hasTopBar: boolean;
   topProtrusions: number;
+  hasCenteredTopTab: boolean;
   frameAspectRatio?: number;
   interiorSizeRatio?: { width: number; height: number };
   subjectBounds: { x: number; y: number; width: number; height: number };
@@ -225,6 +226,7 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
     }
   }
   let topProtrusions = 0;
+  const protrusionColumns: number[] = [];
   if (topBarY >= minY + 3) {
     let active = false;
     for (let x = minX + Math.round(boxWidth * 0.1); x <= maxX - Math.round(boxWidth * 0.1); x += 1) {
@@ -232,11 +234,18 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
       for (let y = minY; y < topBarY - 1; y += 1) {
         if (foreground[y * width + x]) { columnHasInk = true; break; }
       }
+      if (columnHasInk) protrusionColumns.push(x);
       if (columnHasInk && !active) topProtrusions += 1;
       active = columnHasInk;
     }
   }
   if (topProtrusions > 4) topProtrusions = 0;
+  const protrusionLeft = protrusionColumns[0];
+  const protrusionRight = protrusionColumns[protrusionColumns.length - 1];
+  const hasCenteredTopTab = topProtrusions === 1 && protrusionLeft !== undefined
+    && protrusionRight !== undefined
+    && (protrusionRight - protrusionLeft) <= boxWidth * 0.45
+    && Math.abs((protrusionLeft + protrusionRight) / 2 - (minX + maxX) / 2) <= boxWidth * 0.12;
   const frameRatio = topBarY >= 0 ? boxWidth / (maxY - topBarY + 1) : 0;
   const frameShape = hasTopBar && topProtrusions > 0 && frameRatio >= 0.85 && frameRatio <= 1.18
     ? 'square' : shape;
@@ -250,7 +259,7 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
     ? { width: innerWidthRatio, height: innerHeightRatio } : undefined;
   return { aspectRatio, shape: frameShape, hasFullRectangularFrame,
     hasSingleConnectedSubject: nearbyDetachedComponents.length === 0,
-    interiorVerticalGap, hasTopBar, topProtrusions,
+    interiorVerticalGap, hasTopBar, topProtrusions, hasCenteredTopTab,
     frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined, interiorSizeRatio,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
@@ -788,6 +797,7 @@ export default function TDesignSmartPage() {
         generationContext.referenceInteriorGap = referenceShapeAnalysis.interiorVerticalGap;
         generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
         generationContext.referenceTopProtrusions = referenceShapeAnalysis.topProtrusions;
+        generationContext.referenceHasCenteredTopTab = referenceShapeAnalysis.hasCenteredTopTab;
         generationContext.referenceFrameAspectRatio = referenceShapeAnalysis.frameAspectRatio;
         generationContext.referenceInteriorSizeRatio = referenceShapeAnalysis.interiorSizeRatio;
       }
