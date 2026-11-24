@@ -70,6 +70,7 @@ type ReferenceShapeAnalysis = {
   hasTopBar: boolean;
   topProtrusions: number;
   frameAspectRatio?: number;
+  interiorSizeRatio?: { width: number; height: number };
   subjectBounds: { x: number; y: number; width: number; height: number };
 };
 
@@ -218,8 +219,16 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
   const frameRatio = topBarY >= 0 ? boxWidth / (maxY - topBarY + 1) : 0;
   const frameShape = hasTopBar && topProtrusions > 0 && frameRatio >= 0.85 && frameRatio <= 1.18
     ? 'square' : shape;
+  const innerCandidates = interiorComponents.filter((item) => item.y > (topBarY >= 0 ? topBarY : minY) + 2);
+  const inner = innerCandidates.sort((a, b) => b.area - a.area)[0];
+  const innerWidthRatio = inner ? (inner.right - inner.x + 1) / boxWidth : 0;
+  const innerHeightRatio = inner ? (inner.bottom - inner.y + 1) / (topBarY >= 0 ? maxY - topBarY + 1 : boxHeight) : 0;
+  const interiorSizeRatio = inner && innerCandidates.length === 1
+    && innerWidthRatio >= 0.1 && innerWidthRatio <= 0.75
+    && innerHeightRatio >= 0.1 && innerHeightRatio <= 0.75
+    ? { width: innerWidthRatio, height: innerHeightRatio } : undefined;
   return { aspectRatio, shape: frameShape, interiorVerticalGap, hasTopBar, topProtrusions,
-    frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined,
+    frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined, interiorSizeRatio,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
@@ -755,6 +764,7 @@ export default function TDesignSmartPage() {
         generationContext.referenceHasTopBar = referenceShapeAnalysis.hasTopBar;
         generationContext.referenceTopProtrusions = referenceShapeAnalysis.topProtrusions;
         generationContext.referenceFrameAspectRatio = referenceShapeAnalysis.frameAspectRatio;
+        generationContext.referenceInteriorSizeRatio = referenceShapeAnalysis.interiorSizeRatio;
       }
       const prompt = buildTDesignGenerationPrompt({
         concept: referenceImageBase64 ? '参考图中的主体' : concept,

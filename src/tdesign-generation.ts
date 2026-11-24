@@ -34,6 +34,7 @@ export type TDesignGenerationContext = {
   referenceHasTopBar?: boolean;
   referenceTopProtrusions?: number;
   referenceFrameAspectRatio?: number;
+  referenceInteriorSizeRatio?: { width: number; height: number };
 };
 
 type GenerationPromptOptions = {
@@ -448,6 +449,7 @@ ${context?.referenceInteriorGap ? `- The reference has a separate upper horizont
 ${context?.referenceHasTopBar ? '- The reference icon has a continuous horizontal top frame stroke. Preserve that stroke across the frame; do not replace it with two isolated corner stubs or an open gap.' : ''}
 ${context?.referenceTopProtrusions ? `- The reference has ${context.referenceTopProtrusions} distinct short protrusions above its top frame stroke. Preserve their count and positions; do not replace them with a lid, inner dots, or a different object.` : ''}
 ${context?.referenceFrameAspectRatio ? `- The rectangular frame itself has a measured width/height ratio of ${context.referenceFrameAspectRatio.toFixed(2)}. Preserve this ratio while fitting within the square keyline; do not force its width and height to be equal.` : ''}
+${context?.referenceInteriorSizeRatio ? `- The reference's single internal motif occupies about ${(context.referenceInteriorSizeRatio.width * 100).toFixed(0)}% of the frame width and ${(context.referenceInteriorSizeRatio.height * 100).toFixed(0)}% of its height. Keep its full visible box, including any handle or shaft, at this relative size; do not enlarge it with the frame.` : ''}
 - Fill the selected keyline with the complete visible geometry while preserving its proportions. Closed square frames fit within 24×24 while keeping the reference frame ratio; sparse open or fragmented near-square silhouettes use the 28×28 sparse keyline. Horizontal and vertical silhouettes fit within 26×22 and 22×26 respectively. Center near (16,16). Do not treat 24 units as a universal size threshold; a thin object may have a smaller minor dimension.
 - Preserve proportions. Never stretch width and height independently.
 - Prefer integer or 0.5 coordinates. Angled lines should use 45° or another 15° multiple where the object permits.
@@ -801,6 +803,32 @@ export const validateTDesignGeneratedIcon = (
     }
 
     const geometry = context?.family?.geometry;
+    if (context?.referenceInteriorSizeRatio && !geometry) {
+      const outer = measuredGroups.get('stroke1');
+      const detail = measuredGroups.get('stroke2');
+      const sourceDetails = Array.from(root.querySelectorAll('#stroke2 path'));
+      const measuredDetails = measuredPaths.get('stroke2') || [];
+      if (outer && detail && sourceDetails.length === measuredDetails.length) {
+        const frameHeight = context.referenceFrameAspectRatio
+          ? outer.width / context.referenceFrameAspectRatio : outer.height;
+        const desiredWidth = Math.max(1, context.referenceInteriorSizeRatio.width * (outer.width + 2) - 2);
+        const desiredHeight = Math.max(1, context.referenceInteriorSizeRatio.height * (frameHeight + 2) - 2);
+        const scale = Math.min(1, desiredWidth / detail.width, desiredHeight / detail.height);
+        if (scale < 0.92) {
+          const centerX = detail.x + detail.width / 2;
+          const centerY = detail.y + detail.height / 2;
+          const matrix = { a: scale, b: 0, c: 0, d: scale,
+            e: centerX * (1 - scale), f: centerY * (1 - scale) };
+          sourceDetails.forEach((path, index) => {
+            const data = transformMasterGoPath(path.getAttribute('d') || '', matrix);
+            path.setAttribute('d', data);
+            measuredDetails[index].setAttribute('d', data);
+          });
+          measuredGroups.set('stroke2', measuredDetails.reduce<MeasuredBox | undefined>((merged, path) =>
+            mergeMeasuredBoxes(merged, path.getBBox()), undefined)!);
+        }
+      }
+    }
     const stroke1Points = (measuredPaths.get('stroke1') || []).flatMap(samplePathPoints);
     let stroke2Points = (measuredPaths.get('stroke2') || []).flatMap(samplePathPoints);
     // Historical localStorage entries are revalidated without generation context.
