@@ -53,6 +53,68 @@ const categories = Object.keys(importedCategories) as ImportedCategory[];
 const importedIconCount = Object.values(importedCategories)
   .reduce((total, icons) => total + icons.length, 0);
 const generationReferenceIcons: readonly TDesignIcon[] = Object.values(importedCategories).flat();
+const libraryMaskCache = new WeakMap<TDesignIcon, Uint8Array>();
+
+const rasterMask = async (url: string): Promise<Uint8Array> => {
+  const image = new Image();
+  image.src = url;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 48;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('无法比较图标轮廓');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, 48, 48);
+  context.drawImage(image, 0, 0, 48, 48);
+  const pixels = context.getImageData(0, 0, 48, 48).data;
+  const raw = new Uint8Array(48 * 48);
+  let left = 48; let top = 48; let right = -1; let bottom = -1;
+  for (let y = 0; y < 48; y += 1) for (let x = 0; x < 48; x += 1) {
+    const index = (y * 48 + x) * 4;
+    if (Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) > 180) continue;
+    raw[y * 48 + x] = 1;
+    left = Math.min(left, x); top = Math.min(top, y);
+    right = Math.max(right, x); bottom = Math.max(bottom, y);
+  }
+  const normalized = new Uint8Array(32 * 32);
+  if (right < left || bottom < top) return normalized;
+  for (let y = 0; y < 32; y += 1) for (let x = 0; x < 32; x += 1) {
+    const sx = left + Math.round(x * (right - left) / 31);
+    const sy = top + Math.round(y * (bottom - top) / 31);
+    normalized[y * 32 + x] = raw[sy * 48 + sx];
+  }
+  return normalized;
+};
+
+const findVisualLibraryMatches = async (imageUrl: string, icons: readonly TDesignIcon[]) => {
+  const reference = await rasterMask(imageUrl);
+  const ranked: Array<{ icon: TDesignIcon; score: number }> = [];
+  for (let start = 0; start < icons.length; start += 16) {
+    const chunk = icons.slice(start, start + 16);
+    const masks = await Promise.all(chunk.map(async (icon) => {
+      const cached = libraryMaskCache.get(icon);
+      if (cached) return cached;
+      try {
+        const svg = serializeTDesignIcon(icon, 32);
+        const mask = await rasterMask(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+        libraryMaskCache.set(icon, mask);
+        return mask;
+      } catch { return undefined; }
+    }));
+    masks.forEach((mask, index) => {
+      if (!mask) return;
+      let intersection = 0; let union = 0;
+      for (let pixel = 0; pixel < mask.length; pixel += 1) {
+        if (mask[pixel] || reference[pixel]) union += 1;
+        if (mask[pixel] && reference[pixel]) intersection += 1;
+      }
+      if (union) ranked.push({ icon: chunk[index], score: intersection / union });
+    });
+  }
+  return ranked.sort((a, b) => b.score - a.score).filter((item) => item.score >= 0.35).slice(0, 3)
+    .map(({ icon }) => ({ name: icon.name, label: icon.label, keywords: icon.keywords,
+      viewBox: icon.viewBox, body: icon.body, source: 'Current icon library' as const }));
+};
 const generatedCategory = '我的生成' as const;
 type ActiveCategory = ImportedCategory | typeof generatedCategory;
 
@@ -790,6 +852,18 @@ export default function TDesignSmartPage() {
       const generationContext = referenceImageBase64
         ? { ...matchedContext, family: undefined }
         : matchedContext;
+      if (referenceImageBase64 && referenceImageMimeType && !concept) {
+        setGenerationPhase('正在检索图标库…');
+        try {
+          generationContext.references = await findVisualLibraryMatches(
+            `data:${referenceImageMimeType};base64,${referenceImageBase64}`,
+            [...generationReferenceIcons, ...generatedIcons]
+          );
+        } catch (error) {
+          console.warn('Current-library visual search failed:', error);
+        }
+        setGenerationPhase('正在绘制图标…');
+      }
       if (referenceImageBase64 && referenceShapeAnalysis) {
         // Disconnected external strokes can sit outside the dominant component.
         // Their combined ratio cannot be inferred reliably from one pixel box.
