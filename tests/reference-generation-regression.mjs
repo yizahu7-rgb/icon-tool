@@ -21,9 +21,13 @@ const { analyzeReferenceShape } = loadExports(analysisSource);
 const { straightenFrameCornerBevels } = loadExports(
   readFileSync(new URL('../src/fs-node-icon.tsx', import.meta.url), 'utf8')
 );
-const { resolveTDesignGenerationContext, buildTDesignGenerationPrompt } = loadExports(
+const { resolveTDesignGenerationContext, buildTDesignGenerationPrompt, selectFreeformKeyline } = loadExports(
   readFileSync(new URL('../src/tdesign-generation.ts', import.meta.url), 'utf8')
 );
+assert.deepEqual(JSON.parse(JSON.stringify(selectFreeformKeyline(1, true, 82, 26))),
+  { width: 24, height: 24 }, 'a dense open document must use the square keyline');
+assert.deepEqual(JSON.parse(JSON.stringify(selectFreeformKeyline(1, true, 35, 26))),
+  { width: 28, height: 28 }, 'a genuinely sparse open icon may use the larger keyline');
 
 const libraryMatch = resolveTDesignGenerationContext('订单', [
   { name: 'task', label: '任务', keywords: ['订单', '夹板'], viewBox: '0 0 24 24',
@@ -107,6 +111,8 @@ assert.equal(clipboard.analyze()?.hasSingleConnectedSubject, false,
   'a separate check mark must keep its own spacing rule');
 assert.equal(clipboard.analyze()?.hasCenteredTopTab, true,
   'a centered clipboard tab must interrupt the visible frame top');
+assert.equal(clipboard.analyze()?.shape, 'vertical-rectangle',
+  'one centered tab must not turn a vertically rectangular icon into a square');
 
 const slopedBoxPath = 'M4 10 L6 5 L26 5 L28 10 L28 25 L25 28 L7 28 L4 25 Z';
 const repaired = straightenFrameCornerBevels(slopedBoxPath, { preserveTopDiagonals: true });

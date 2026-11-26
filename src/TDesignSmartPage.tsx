@@ -120,6 +120,7 @@ type ActiveCategory = ImportedCategory | typeof generatedCategory;
 
 type GeneratedTDesignIcon = TDesignIcon & {
   sourceModel?: string;
+  normalizedSizeVersion?: 1;
   standardVersion: typeof TDESIGN_GENERATION_STANDARD_VERSION;
 };
 
@@ -247,8 +248,8 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
   const hasFullRectangularFrame = hasRectangularOutline
     && hasEarlySideWall(false) && hasEarlySideWall(true);
   const shape = hasRectangularOutline
-    ? aspectRatio >= 0.85 && aspectRatio <= 1.18 ? 'square'
-      : aspectRatio > 1.18 ? 'horizontal-rectangle' : 'vertical-rectangle'
+    ? aspectRatio >= 0.94 && aspectRatio <= 1.06 ? 'square'
+      : aspectRatio > 1.06 ? 'horizontal-rectangle' : 'vertical-rectangle'
     : aspectRatio >= 0.85 && aspectRatio <= 1.18
       && [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875].every((fraction) => {
         const angle = fraction * Math.PI * 2;
@@ -309,7 +310,7 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
     && (protrusionRight - protrusionLeft) <= boxWidth * 0.45
     && Math.abs((protrusionLeft + protrusionRight) / 2 - (minX + maxX) / 2) <= boxWidth * 0.12;
   const frameRatio = topBarY >= 0 ? boxWidth / (maxY - topBarY + 1) : 0;
-  const frameShape = hasTopBar && topProtrusions > 0 && frameRatio >= 0.85 && frameRatio <= 1.18
+  const frameShape = hasTopBar && topProtrusions >= 2 && frameRatio >= 0.85 && frameRatio <= 1.18
     ? 'square' : shape;
   const innerCandidates = interiorComponents.filter((item) => item.y > (topBarY >= 0 ? topBarY : minY) + 2);
   const inner = innerCandidates.sort((a, b) => b.area - a.area)[0];
@@ -322,7 +323,8 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
   return { aspectRatio, shape: frameShape, hasFullRectangularFrame,
     hasSingleConnectedSubject: nearbyDetachedComponents.length === 0,
     interiorVerticalGap, hasTopBar, topProtrusions, hasCenteredTopTab,
-    frameAspectRatio: frameShape === 'square' && topProtrusions > 0 ? frameRatio : undefined, interiorSizeRatio,
+    frameAspectRatio: topProtrusions > 0 && frameRatio >= 0.7 && frameRatio <= 1.4 ? frameRatio : undefined,
+    interiorSizeRatio,
     subjectBounds: { x: minX, y: minY, width: boxWidth, height: boxHeight } };
 };
 
@@ -431,6 +433,17 @@ const readGeneratedIcons = (): GeneratedTDesignIcon[] => {
         `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">${candidate.body}</svg>`
       );
       if (!validation.ok) return [];
+      // Earlier versions accepted oversized masters because fitting only
+      // scaled upward. Refit legacy straight-line drawings on load so their
+      // preview, copied SVG, and export all use the same corrected geometry.
+      const sourceSvg = `<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">${validation.body}</svg>`;
+      const parsedSvg = new DOMParser().parseFromString(sourceSvg, 'image/svg+xml');
+      const hasIntrinsicCurves = Array.from(parsedSvg.querySelectorAll('path[d]'))
+        .some((path) => /[ACQST]/.test(path.getAttribute('d') || ''));
+      const refitted = candidate.normalizedSizeVersion !== 1
+        && !hasIntrinsicCurves && !candidate.sourceModel?.includes('固定母版')
+        ? validateTDesignGeneratedIcon(sourceSvg, { references: [], stroke2Role: 'core-detail' })
+        : validation;
       return [{
         name: candidate.name,
         label: candidate.label,
@@ -438,7 +451,8 @@ const readGeneratedIcons = (): GeneratedTDesignIcon[] => {
           ? candidate.keywords.filter((keyword): keyword is string => typeof keyword === 'string')
           : [candidate.label],
         viewBox: '0 0 32 32',
-        body: validation.body,
+        body: refitted.ok ? refitted.body : validation.body,
+        normalizedSizeVersion: 1,
         standardVersion: TDESIGN_GENERATION_STANDARD_VERSION,
         ...(typeof candidate.sourceModel === 'string' ? { sourceModel: candidate.sourceModel } : {})
       }];
@@ -1010,6 +1024,7 @@ export default function TDesignSmartPage() {
         keywords: [label, 'AI生成', '自定义'],
         viewBox: '0 0 32 32',
         body: validation.body,
+        normalizedSizeVersion: 1,
         standardVersion: TDESIGN_GENERATION_STANDARD_VERSION,
         ...(sourceModel ? { sourceModel } : {})
       };

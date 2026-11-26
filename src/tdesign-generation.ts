@@ -446,7 +446,7 @@ DRAWING SYSTEM
 - Keep ordinary geometry inside x=2..30 and y=2..30. Semantic extremities may cross that keyline but must remain inside the artboard.
 - Choose one centered keyline by visual body: horizontal 26×22, square 24×24, vertical 22×26, or circular/sparse 28×28.
 - For an uploaded icon reference, match the actual outer silhouette's width-to-height ratio. A nearly square frame must stay nearly square; do not turn it into a narrow portrait frame. Preserve the exact count and placement of internal bars, arrows, and other meaningful marks.
-${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 15% of this ratio.` : ''}
+${context?.referenceAspectRatio ? `- Measured uploaded-reference silhouette width/height ratio: ${context.referenceAspectRatio.toFixed(2)}. Keep the generated stroke1 outer silhouette within 7% of this ratio. A centered top tab counts toward the total height; do not force a vertically rectangular icon into a square.` : ''}
 ${context?.referenceShape ? `- Classified uploaded-reference main body: ${context.referenceShape}. ${context.referenceShape === 'square' ? context.referenceTopProtrusions ? 'Use a square 24×24 keyline for the rectangular frame itself; attached top marks may extend about 2 units above the frame. Do not fit the frame and protrusions into the same 24×24 box.' : 'Use the square 24×24 keyline, x=4..28 and y=4..28; do not choose the vertical keyline.' : context.referenceShape === 'horizontal-rectangle' ? 'Use the horizontal 26×22 keyline, x=3..29 and y=5..27.' : context.referenceShape === 'vertical-rectangle' ? 'Use the vertical 22×26 keyline, x=5..27 and y=3..29.' : context.referenceShape === 'circle' ? 'Use the circular 28×28 keyline, x=2..30 and y=2..30.' : 'Preserve the unusual silhouette and select the nearest keyline by visual weight without changing its proportions.'}` : ''}
 ${hasReferenceImage ? '- Classify topology separately from the keyline: a square-sized icon can contain a sloped lid, roof, or perspective face. Convert rounded corners of actual adjustable rectangular edges to right-angle vertices, regardless of the reference corner radius. Preserve structural diagonal edges and openings; never turn them into rectangle corners. The UI applies the requested radius later.' : ''}
 ${context?.referenceHasFullRectangularFrame ? '- The reference has a full rectangular outer frame: all four adjustable frame corners must be right-angle vertices in the SVG master, even if the bitmap shows rounding.' : ''}
@@ -504,6 +504,15 @@ type MeasuredPoint = { x: number; y: number };
 
 const MIN_LAYER_CENTERLINE_GAP = 3.5;
 const PATH_SAMPLE_STEP = 0.25;
+export const selectFreeformKeyline = (
+  aspect: number,
+  hasOpenOuterStroke: boolean,
+  outerLength: number,
+  majorExtent: number
+) => aspect > 1.25 ? { width: 26, height: 22 }
+  : aspect < 0.8 ? { width: 22, height: 26 }
+    : hasOpenOuterStroke && outerLength < majorExtent * 2.8
+      ? { width: 28, height: 28 } : { width: 24, height: 24 };
 const REQUIRED_PATH_ATTRIBUTES = {
   fill: 'none',
   stroke: 'currentColor',
@@ -768,15 +777,14 @@ export const validateTDesignGeneratedIcon = (
         const aspect = bounds.width / bounds.height;
         const hasOpenOuterStroke = Array.from(root.querySelectorAll('#stroke1 path'))
           .some((path) => !/Z\s*$/.test(path.getAttribute('d') || ''));
+        const outerLength = (measuredPaths.get('stroke1') || [])
+          .reduce((total, path) => total + path.getTotalLength(), 0);
         const keyline = context.referenceShape === 'square' ? { width: 24, height: context.referenceTopProtrusions ? 26 : 24 }
           : context.referenceShape === 'horizontal-rectangle' ? { width: 26, height: 22 }
             : context.referenceShape === 'vertical-rectangle' ? { width: 22, height: 26 }
               : context.referenceShape === 'circle' ? { width: 28, height: 28 }
-                : aspect > 1.25 ? { width: 26, height: 22 }
-                  : aspect < 0.8 ? { width: 22, height: 26 }
-                    // Open outlines carry less ink than closed near-square
-                    // silhouettes and need the larger sparse keyline.
-                    : hasOpenOuterStroke ? { width: 28, height: 28 } : { width: 24, height: 24 };
+                : selectFreeformKeyline(aspect, hasOpenOuterStroke, outerLength,
+                  Math.max(bounds.width, bounds.height));
         const centerX = bounds.x + bounds.width / 2;
         const centerY = bounds.y + bounds.height / 2;
         const frameRatio = context.referenceFrameAspectRatio || 1;
@@ -787,8 +795,8 @@ export const validateTDesignGeneratedIcon = (
           ? Math.min(frameTarget.width / frameBounds.width, frameTarget.height / frameBounds.height,
             28 / bounds.width, 28 / bounds.height)
           : Math.min(keyline.width / bounds.width, keyline.height / bounds.height);
-        const scale = targetScale > 1.02 ? targetScale : 1;
-        if (scale > 1 || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
+        const scale = Math.abs(targetScale - 1) > 0.02 ? targetScale : 1;
+        if (scale !== 1 || Math.abs(centerX - 16) > 1.5 || Math.abs(centerY - 16) > 1.5) {
           const matrix = { a: scale, b: 0, c: 0, d: scale,
             e: 16 - centerX * scale, f: 16 - centerY * scale };
           const sourcePaths = Array.from(root.querySelectorAll('path'));
@@ -1101,31 +1109,21 @@ export const validateTDesignGeneratedIcon = (
             ? { width: 28, height: 28 }
             : undefined;
     if (referenceKeyline && stroke1Box && !context?.family?.geometry && !context?.referenceTopProtrusions) {
-      const widthError = Math.abs(stroke1Box.width - referenceKeyline.width);
-      const heightError = Math.abs(stroke1Box.height - referenceKeyline.height);
+      const exceedsKeyline = stroke1Box.width > referenceKeyline.width + 1.5
+        || stroke1Box.height > referenceKeyline.height + 1.5;
+      const undersized = stroke1Box.width < referenceKeyline.width - 1.5
+        && stroke1Box.height < referenceKeyline.height - 1.5;
       const centerX = stroke1Box.x + stroke1Box.width / 2;
       const centerY = stroke1Box.y + stroke1Box.height / 2;
-      if (widthError > 1.5 || heightError > 1.5 || Math.abs(centerX - 16) > 1
+      if (exceedsKeyline || undersized || Math.abs(centerX - 16) > 1
         || Math.abs(centerY - 16) > 1) {
-        return { ok: false, reason: `参考图形状应使用 ${referenceKeyline.width}×${referenceKeyline.height} Keyline 并居中，当前外轮廓为 ${stroke1Box.width.toFixed(1)}×${stroke1Box.height.toFixed(1)}` };
-      }
-      if (context?.referenceHasFullRectangularFrame) {
-        const corners = [
-          { x: stroke1Box.x, y: stroke1Box.y },
-          { x: stroke1Box.x + stroke1Box.width, y: stroke1Box.y },
-          { x: stroke1Box.x, y: stroke1Box.y + stroke1Box.height },
-          { x: stroke1Box.x + stroke1Box.width, y: stroke1Box.y + stroke1Box.height }
-        ];
-        if (corners.some((corner) => stroke1Points.every((point) =>
-          Math.hypot(point.x - corner.x, point.y - corner.y) > 0.75))) {
-          return { ok: false, reason: '参考图是圆角矩形：SVG 母版必须保留四个直角顶点，不能画成斜切角或八边形；圆角由页面参数处理' };
-        }
+        return { ok: false, reason: `参考图主体应按比例适配 ${referenceKeyline.width}×${referenceKeyline.height} Keyline 并居中，当前外轮廓为 ${stroke1Box.width.toFixed(1)}×${stroke1Box.height.toFixed(1)}` };
       }
     }
     if (context?.referenceAspectRatio && stroke1Box && stroke1Box.height > 0) {
       const actualRatio = stroke1Box.width / stroke1Box.height;
       const ratioError = Math.abs(actualRatio / context.referenceAspectRatio - 1);
-      if (ratioError > 0.15) {
+      if (ratioError > 0.07) {
         return { ok: false, reason: `外轮廓宽高比 ${actualRatio.toFixed(2)} 与参考图 ${context.referenceAspectRatio.toFixed(2)} 不符` };
       }
     }
