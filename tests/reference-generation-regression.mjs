@@ -98,6 +98,21 @@ for (const [x, y] of [[64, 29], [34, 82], [94, 82]]) ring.circle(x, y, 8);
 assert.equal(ring.analyze()?.hasSingleConnectedSubject, true,
   'nodes touching a ring are one connected subject');
 
+const flagOnRing = makeImage();
+for (const [a, b] of [
+  [[34, 74], [40, 62]], [[40, 62], [52, 58]],
+  [[76, 58], [88, 64]], [[88, 64], [94, 74]],
+  [[94, 74], [88, 86]], [[88, 86], [40, 86]], [[40, 86], [34, 74]],
+  [[60, 22], [60, 64]], [[60, 22], [76, 28]], [[76, 28], [60, 36]]
+]) flagOnRing.line(...a, ...b);
+const flagBounds = flagOnRing.analyze()?.subjectBounds;
+assert.ok(flagBounds && flagBounds.y <= 20 && flagBounds.y + flagBounds.height >= 86,
+  'reference cropping must retain a detached flag above the larger ring');
+flagOnRing.line(40, 102, 88, 102);
+const captionBounds = flagOnRing.analyze()?.subjectBounds;
+assert.ok(captionBounds && captionBounds.y + captionBounds.height < 95,
+  'reference cropping must still exclude a separate caption below the icon');
+
 const clipboard = makeImage();
 for (const [a, b] of [
   [[28, 24], [100, 24]], [[100, 24], [100, 108]],

@@ -200,19 +200,40 @@ export const analyzeReferenceShape = (canvas: HTMLCanvasElement, context: Canvas
       if (component.area >= 3) components.push(component);
     }
   }
-  // A screenshot may contain a caption below the icon. Measure and send the
-  // connected icon silhouette, not the union of every dark pixel in the file.
+  // A screenshot may contain a caption below the icon. Start at the largest
+  // stroke, then include nearby strokes belonging to the same visual object.
+  // A flag above a ring, for example, can be disconnected in the bitmap even
+  // though their bounding boxes overlap; cropping only the ring loses the flag.
   const subject = [...components].sort((a, b) => b.area - a.area)[0];
-  if (!subject || subject.area < foregroundCount * 0.12
-    || subject.right - subject.x + 1 < fullWidth * 0.4
-    || subject.bottom - subject.y + 1 < fullHeight * 0.4) return undefined;
-  minX = subject.x;
-  minY = subject.y;
-  maxX = subject.right;
-  maxY = subject.bottom;
+  if (!subject || subject.area < foregroundCount * 0.12) return undefined;
+  const subjectGroup = new Set([subject]);
+  const bounds = { x: subject.x, y: subject.y, right: subject.right, bottom: subject.bottom };
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const component of components) {
+      if (subjectGroup.has(component)) continue;
+      const horizontalGap = Math.max(0, bounds.x - component.right - 1, component.x - bounds.right - 1);
+      const verticalGap = Math.max(0, bounds.y - component.bottom - 1, component.y - bounds.bottom - 1);
+      const subjectSpan = Math.max(bounds.right - bounds.x + 1, bounds.bottom - bounds.y + 1);
+      const nearby = Math.max(3, Math.round(subjectSpan * 0.08));
+      if (horizontalGap > nearby || verticalGap > nearby) continue;
+      subjectGroup.add(component);
+      bounds.x = Math.min(bounds.x, component.x);
+      bounds.y = Math.min(bounds.y, component.y);
+      bounds.right = Math.max(bounds.right, component.right);
+      bounds.bottom = Math.max(bounds.bottom, component.bottom);
+      expanded = true;
+    }
+  }
+  minX = bounds.x;
+  minY = bounds.y;
+  maxX = bounds.right;
+  maxY = bounds.bottom;
   const boxWidth = maxX - minX + 1;
   const boxHeight = maxY - minY + 1;
-  if (boxWidth < 8 || boxHeight < 8) return undefined;
+  if (boxWidth < 8 || boxHeight < 8
+    || boxWidth < fullWidth * 0.4 || boxHeight < fullHeight * 0.4) return undefined;
   const aspectRatio = boxWidth / boxHeight;
   const sideSupport = (vertical: boolean, farSide: boolean) => {
     let supported = 0;
